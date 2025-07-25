@@ -1,73 +1,60 @@
-# Welcome to your Lovable project
+# DIMO AI Web App
 
-## Project info
+A modern web application for DIMO AI, built with Vite, React, TypeScript, shadcn-ui, and Tailwind CSS.
 
-**URL**: https://lovable.dev/projects/e7376ab8-975b-4e37-ab11-1643d10eb516
+## Project Overview
 
-## How can I edit this code?
+This app provides a seamless interface for DIMO-connected vehicle owners to access AI-powered insights, predictive maintenance, and smart vehicle management features. It integrates the Login with DIMO SDK for secure authentication and vehicle data access.
 
-There are several ways of editing your application.
+## Getting Started
 
-**Use Lovable**
+### Prerequisites
+- Node.js (v18+ recommended)
+- npm (v9+ recommended)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/e7376ab8-975b-4e37-ab11-1643d10eb516) and start prompting.
+### Setup
+1. **Clone the repository:**
+   ```sh
+   git clone <YOUR_GIT_URL>
+   cd dimo-ai-web
+   ```
+2. **Install dependencies:**
+   ```sh
+   npm install
+   ```
+3. **Configure environment variables:**
+   - Copy `.env.example` to `.env` (if provided), or create a `.env` file:
+     ```env
+     VITE_DIMO_CLIENT_ID=your_client_id
+     VITE_DIMO_API_KEY=your_api_key
+     VITE_DIMO_REDIRECT_URI=http://localhost:8080
+     ```
+   - **Never commit your `.env` file or secrets to version control.**
 
-Changes made via Lovable will be committed automatically to this repo.
+4. **Start the development server:**
+   ```sh
+   npm run dev
+   ```
+   The app will be available at [http://localhost:8080](http://localhost:8080).
 
-**Use your preferred IDE**
+## Security & Best Practices
+- **Secrets:** All API keys and credentials must be stored in `.env` files, which are gitignored by default.
+- **No hardcoded secrets:** The codebase is free of hardcoded secrets and credentials.
+- **.env files:** Never push `.env` or any secret files to GitHub.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
+## Technologies Used
 - Vite
-- TypeScript
 - React
+- TypeScript
 - shadcn-ui
 - Tailwind CSS
+- DIMO Login SDK
 
-## How can I deploy this project?
+## Authentication
+This app uses the [Login with DIMO SDK](https://www.npmjs.com/package/@dimo-network/login-with-dimo) for secure authentication and vehicle data access. See the SDK documentation for advanced usage.
 
-Simply open [Lovable](https://lovable.dev/projects/e7376ab8-975b-4e37-ab11-1643d10eb516) and click on Share -> Publish.
+## Contributing
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## License
+[MIT](LICENSE)
