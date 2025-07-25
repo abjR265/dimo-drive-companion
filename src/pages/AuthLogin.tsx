@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Shield, Zap, Users } from "lucide-react";
 // Note: LoginWithDimo component will be integrated here
+import { LoginWithDimo } from '@dimo-network/login-with-dimo';
 
 export default function AuthLogin() {
   const benefits = [
@@ -88,15 +89,20 @@ export default function AuthLogin() {
             
             <CardContent className="space-y-6">
               {/* DIMO Login Button */}
-              <Button 
-                variant="hero" 
-                size="xl" 
+              <LoginWithDimo
+                mode="popup"
+                clientId={process.env.NEXT_PUBLIC_DIMO_CLIENT_ID || ''}
+                redirectUri={process.env.NEXT_PUBLIC_DIMO_REDIRECT_URI || ''}
+                apiKey={process.env.NEXT_PUBLIC_DIMO_API_KEY || ''}
+                onSuccess={(authData: any) => {
+                  console.log('Success:', authData);
+                  window.location.href = '/dashboard';
+                }}
+                onError={(error: any) => {
+                  console.error('Error:', error);
+                }}
                 className="w-full"
-                onClick={handleDimoLogin}
-              >
-                <Car className="mr-2 h-5 w-5" />
-                Connect with DIMO
-              </Button>
+              />
 
               {/* Features List */}
               <div className="space-y-3 pt-4 border-t border-border">

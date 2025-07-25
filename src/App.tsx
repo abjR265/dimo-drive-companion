@@ -9,37 +9,49 @@ import AIChat from "./pages/AIChat";
 import AuthLogin from "./pages/AuthLogin";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
+import { useEffect } from 'react';
+import { initializeDimoSDK, DimoAuthProvider } from '@dimo-network/login-with-dimo';
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/auth/login" element={<AuthLogin />} />
-          
-          {/* Protected Routes with Layout */}
-          <Route path="/" element={<AppLayout />}>
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="vehicles" element={<Dashboard />} />
-            <Route path="ai-chat" element={<AIChat />} />
-            <Route path="insights" element={<Dashboard />} />
-            <Route path="documents" element={<Dashboard />} />
-            <Route path="charging" element={<Dashboard />} />
-            <Route path="settings" element={<Dashboard />} />
-          </Route>
-          
-          {/* Catch-all route */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  useEffect(() => {
+    initializeDimoSDK({
+      clientId: import.meta.env.VITE_DIMO_CLIENT_ID || '',
+      redirectUri: import.meta.env.VITE_DIMO_REDIRECT_URI || '',
+      apiKey: import.meta.env.VITE_DIMO_API_KEY || '',
+    });
+  }, []);
+
+  return (
+    <DimoAuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth/login" element={<AuthLogin />} />
+              {/* Protected Routes with Layout */}
+              <Route path="/" element={<AppLayout />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="vehicles" element={<Dashboard />} />
+                <Route path="ai-chat" element={<AIChat />} />
+                <Route path="insights" element={<Dashboard />} />
+                <Route path="documents" element={<Dashboard />} />
+                <Route path="charging" element={<Dashboard />} />
+                <Route path="settings" element={<Dashboard />} />
+              </Route>
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </DimoAuthProvider>
+  );
+};
 
 export default App;

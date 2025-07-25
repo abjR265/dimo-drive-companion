@@ -11,6 +11,8 @@ import {
   Shield
 } from "lucide-react";
 import heroImage from "@/assets/hero-automotive.jpg";
+import { useState } from 'react';
+import { LoginWithDimo } from '@dimo-network/login-with-dimo';
 
 export default function Landing() {
   const features = [
@@ -41,6 +43,8 @@ export default function Landing() {
     { icon: Zap, text: "Real-time monitoring and alerts" },
     { icon: Shield, text: "Secure blockchain-based data" }
   ];
+
+  const [showDimoLogin, setShowDimoLogin] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,10 +88,36 @@ export default function Landing() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="hero" size="xl" className="group">
-                  Connect Your DIMO Vehicle
+                <Button 
+                  variant="hero" 
+                  size="xl" 
+                  className="group"
+                  onClick={() => setShowDimoLogin(true)}
+                >
+                  Connect to DIMO
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
+                {showDimoLogin && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="bg-background p-8 rounded-lg shadow-lg relative">
+                      <button className="absolute top-2 right-2 text-xl" onClick={() => setShowDimoLogin(false)}>&times;</button>
+                      <LoginWithDimo
+                        mode="popup"
+                        clientId={import.meta.env.VITE_DIMO_CLIENT_ID || ''}
+                        redirectUri={import.meta.env.VITE_DIMO_REDIRECT_URI || ''}
+                        apiKey={import.meta.env.VITE_DIMO_API_KEY || ''}
+                        onSuccess={(authData: any) => {
+                          console.log('Success:', authData);
+                          window.location.href = '/dashboard';
+                        }}
+                        onError={(error: any) => {
+                          console.error('Error:', error);
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                )}
                 <Button variant="outline" size="xl">
                   Watch Demo
                 </Button>
