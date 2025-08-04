@@ -28,13 +28,60 @@ export default function AuthLogin() {
     }
   ];
 
-  // Placeholder for DIMO Login - in real implementation, use:
-  // import { LoginWithDimo } from '@dimo-network/login-with-dimo'
-  const handleDimoLogin = () => {
-    // This would integrate with DIMO Login SDK
-    console.log('DIMO Login clicked');
-    // For demo purposes, redirect to dashboard
-    window.location.href = '/dashboard';
+  // Handle successful DIMO login
+  const handleDimoSuccess = async (authData: any) => {
+    console.log('DIMO Login Success:', authData);
+    
+    try {
+      // Extract user data from auth response
+      const userJWT = authData.token || authData.accessToken || authData.jwt;
+      const userVehicles = authData.sharedVehicles || authData.vehicles || [];
+      
+      // Extract wallet address from auth data
+      const walletAddress = authData.address || 
+                           authData.walletAddress || 
+                           authData.user?.address ||
+                           authData.user?.walletAddress ||
+                           authData.ethereumAddress ||
+                           null;
+      
+      if (!userJWT) {
+        console.error('No JWT found in auth data');
+        return;
+      }
+
+      if (!walletAddress) {
+        console.error('No wallet address found in auth data');
+        console.log('Available auth data keys:', Object.keys(authData));
+        // Continue anyway, wallet address is optional for now
+      }
+
+      // Get the first vehicle's tokenId (or use a default)
+      const firstVehicle = userVehicles[0];
+      const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
+
+      console.log('User JWT:', userJWT);
+      console.log('User Vehicles:', userVehicles);
+      console.log('Wallet Address:', walletAddress);
+      console.log('Using Token ID:', tokenId);
+
+      // Store auth data in localStorage for the dashboard
+      localStorage.setItem('dimoAuth', JSON.stringify({
+        jwt: userJWT,
+        tokenId: tokenId,
+        vehicles: userVehicles,
+        walletAddress: walletAddress,
+        timestamp: Date.now()
+      }));
+
+      // Redirect to dashboard
+      window.location.href = '/dashboard';
+      
+    } catch (error) {
+      console.error('Error processing DIMO login:', error);
+      // Still redirect to dashboard even if there's an error
+      window.location.href = '/dashboard';
+    }
   };
 
   return (
@@ -91,15 +138,12 @@ export default function AuthLogin() {
               {/* DIMO Login Button */}
               <LoginWithDimo
                 mode="popup"
-                clientId={process.env.NEXT_PUBLIC_DIMO_CLIENT_ID || ''}
-                redirectUri={process.env.NEXT_PUBLIC_DIMO_REDIRECT_URI || ''}
-                apiKey={process.env.NEXT_PUBLIC_DIMO_API_KEY || ''}
-                onSuccess={(authData: any) => {
-                  console.log('Success:', authData);
-                  window.location.href = '/dashboard';
-                }}
+                clientId={import.meta.env.VITE_DIMO_CLIENT_ID || ''}
+                redirectUri={import.meta.env.VITE_DIMO_REDIRECT_URI || ''}
+                apiKey={import.meta.env.VITE_DIMO_API_KEY || ''}
+                onSuccess={handleDimoSuccess}
                 onError={(error: any) => {
-                  console.error('Error:', error);
+                  console.error('DIMO Login Error:', error);
                 }}
                 className="w-full"
               />

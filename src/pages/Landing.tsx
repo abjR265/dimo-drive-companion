@@ -106,9 +106,148 @@ export default function Landing() {
                         clientId={import.meta.env.VITE_DIMO_CLIENT_ID || ''}
                         redirectUri={import.meta.env.VITE_DIMO_REDIRECT_URI || ''}
                         apiKey={import.meta.env.VITE_DIMO_API_KEY || ''}
-                        onSuccess={(authData: any) => {
-                          console.log('Success:', authData);
-                          window.location.href = '/dashboard';
+                        onSuccess={async (authData: any) => {
+                          console.log('DIMO Login Success:', authData);
+                          console.log('AuthData type:', typeof authData);
+                          console.log('AuthData keys:', Object.keys(authData || {}));
+                          console.log('Full authData object:', JSON.stringify(authData, null, 2));
+                          
+                          // Debug: Check for wallet address in different possible locations
+                          console.log('=== WALLET ADDRESS DEBUG ===');
+                          console.log('authData.address:', authData.address);
+                          console.log('authData.walletAddress:', authData.walletAddress);
+                          console.log('authData.user?.address:', authData.user?.address);
+                          console.log('authData.user?.walletAddress:', authData.user?.walletAddress);
+                          console.log('authData.ethereumAddress:', authData.ethereumAddress);
+                          console.log('authData.sub:', authData.sub); // JWT subject might contain address
+                          console.log('authData.eth_address:', authData.eth_address);
+                          console.log('authData.wallet_address:', authData.wallet_address);
+                          console.log('authData.owner:', authData.owner);
+                          console.log('=== END DEBUG ===');
+                          
+                          try {
+                            // Extract user data from auth response
+                            const userJWT = authData.token || authData.accessToken || authData.jwt;
+                            const userVehicles = authData.sharedVehicles || authData.vehicles || [];
+                            
+                            // Extract wallet address from auth data - try more variations
+                            let walletAddress = authData.address || 
+                                              authData.walletAddress || 
+                                              authData.user?.address ||
+                                              authData.user?.walletAddress ||
+                                              authData.ethereumAddress ||
+                                              authData.eth_address ||
+                                              authData.wallet_address ||
+                                              authData.owner ||
+                                              authData.sub || // JWT subject might be the address
+                                              null;
+                            
+                            // If wallet address is still null, try to extract from JWT payload
+                            if (!walletAddress && userJWT) {
+                              try {
+                                const jwtPayload = JSON.parse(atob(userJWT.split('.')[1]));
+                                console.log('JWT Payload:', jwtPayload);
+                                walletAddress = jwtPayload.sub || 
+                                               jwtPayload.address || 
+                                               jwtPayload.wallet_address ||
+                                               jwtPayload.eth_address ||
+                                               jwtPayload.owner ||
+                                               null;
+                                console.log('Extracted wallet address from JWT:', walletAddress);
+                              } catch (error) {
+                                console.error('Failed to decode JWT payload:', error);
+                              }
+                            }
+                            
+                            // Convert base64 wallet address to Ethereum address format
+                            if (walletAddress && walletAddress.startsWith('Ciowe')) {
+                              try {
+                                // Decode base64
+                                const decoded = atob(walletAddress);
+                                console.log('Decoded base64:', decoded);
+                                
+                                // Convert to hex string
+                                const hexString = Array.from(decoded).map(b => b.charCodeAt(0).toString(16).padStart(2, '0')).join('');
+                                console.log('Full hex string:', hexString);
+                                
+                                // Extract the Ethereum address - it should be 20 bytes (40 hex chars)
+                                // Look for a pattern that looks like an Ethereum address
+                                const ethereumAddressMatch = hexString.match(/0x[a-fA-F0-9]{40}/);
+                                if (ethereumAddressMatch) {
+                                  walletAddress = ethereumAddressMatch[0];
+                                } else {
+                                  // If no match, try to extract from the JWT payload directly
+                                  try {
+                                    const jwtPayload = JSON.parse(atob(userJWT.split('.')[1]));
+                                    console.log('JWT Payload for address extraction:', jwtPayload);
+                                    
+                                    // Look for ethereum_address in the JWT
+                                    if (jwtPayload.ethereum_address) {
+                                      walletAddress = jwtPayload.ethereum_address;
+                                      console.log('Found ethereum_address in JWT:', walletAddress);
+                                    } else {
+                                      console.error('No valid Ethereum address found in JWT payload');
+                                      walletAddress = null;
+                                    }
+                                  } catch (error) {
+                                    console.error('Failed to extract address from JWT:', error);
+                                    walletAddress = null;
+                                  }
+                                }
+                                
+                                console.log('Final wallet address:', walletAddress);
+                                
+                                // Validate the address format
+                                if (walletAddress && walletAddress.length === 42 && walletAddress.startsWith('0x')) {
+                                  console.log('Valid Ethereum address:', walletAddress);
+                                } else {
+                                  console.error('Invalid Ethereum address format:', walletAddress);
+                                  walletAddress = null;
+                                }
+                              } catch (error) {
+                                console.error('Failed to convert wallet address:', error);
+                                walletAddress = null;
+                              }
+                            }
+                            
+                            if (!userJWT) {
+                              console.error('No JWT found in auth data');
+                              return;
+                            }
+
+                            if (!walletAddress) {
+                              console.error('No wallet address found in auth data');
+                              console.log('Available auth data keys:', Object.keys(authData));
+                              console.log('JWT payload (if available):', userJWT.split('.')[1] ? JSON.parse(atob(userJWT.split('.')[1])) : 'Cannot decode JWT');
+                              // Continue anyway, wallet address is optional for now
+                            }
+
+                            // Get the first vehicle's tokenId (or use a default)
+                            const firstVehicle = userVehicles[0];
+                            const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
+
+                            console.log('User JWT:', userJWT);
+                            console.log('User Vehicles:', userVehicles);
+                            console.log('Wallet Address:', walletAddress);
+                            console.log('Using Token ID:', tokenId);
+
+                            // Store auth data in localStorage for the dashboard
+                            localStorage.setItem('dimoAuth', JSON.stringify({
+                              jwt: userJWT,
+                              tokenId: tokenId,
+                              vehicles: userVehicles,
+                              walletAddress: walletAddress,
+                              timestamp: Date.now()
+                            }));
+
+                            // Redirect to dashboard
+                            window.location.href = '/dashboard';
+                            
+                          } catch (error) {
+                            console.error('Error processing DIMO login:', error);
+                            // Still redirect to dashboard even if there's an error
+                            window.location.href = '/dashboard';
+                          }
                         }}
                         onError={(error: any) => {
                           console.error('Error:', error);
