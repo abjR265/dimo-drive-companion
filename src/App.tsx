@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import AIChat from "./pages/AIChat";
+import { AIChatEnhanced } from "./components/AIChatEnhanced";
+import { DocumentIntelligence } from "./components/DocumentIntelligence";
 import AuthLogin from "./pages/AuthLogin";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -62,9 +64,9 @@ const App = () => {
                 <Route path="/" element={<AppLayout />}>
                   <Route path="dashboard" element={<Dashboard />} />
                   <Route path="vehicles" element={<Dashboard />} />
-                  <Route path="ai-chat" element={<AIChat />} />
+                  <Route path="ai-chat" element={<AIChatEnhanced />} />
                   <Route path="insights" element={<Dashboard />} />
-                  <Route path="documents" element={<Dashboard />} />
+                  <Route path="documents" element={<DocumentIntelligence />} />
                   <Route path="charging" element={<Dashboard />} />
                   <Route path="settings" element={<Dashboard />} />
                 </Route>

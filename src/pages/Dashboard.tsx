@@ -5,6 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { VehicleCard } from "@/components/VehicleCard";
 import { McpTest } from "@/components/McpTest";
+import { DocumentUpload } from "@/components/DocumentUpload";
+import { DimoAttestationTest } from "@/components/DimoAttestationTest";
 import { 
   Car, 
   Wrench, 
@@ -19,10 +21,12 @@ import {
   RefreshCw,
   Sparkles,
   MapPin,
-  TestTube
+  TestTube,
+  FileText
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "@/hooks/use-toast";
+import { db } from "@/lib/supabase";
 // Mock vehicle data interface
 interface DimoVehicle {
   id: string;
@@ -52,81 +56,23 @@ interface UserAuthData {
   walletAddress?: string;
 }
 
-// Mock service for vehicle data
-const mockVehicleService = {
-  getVehicles(): DimoVehicle[] {
-    return [
-      {
-        id: 'mercedes-c-class-2014',
-        name: 'Mercedes-Benz C-Class',
-        model: 'C-Class',
-        year: 2014,
-        type: 'gas',
-        healthScore: 85,
-        status: 'optimal',
-        fuelLevel: 0.60,
-        mileage: 45000,
-        lastService: '2024-01-10',
-        aiInsight: 'Your Mercedes-Benz C-Class is running smoothly. Regular maintenance schedule is up to date.',
-        tokenId: 8,
-        location: { latitude: 37.7749, longitude: -122.4194 }, // San Francisco
-      },
-      {
-        id: 'tesla-model-3',
-        name: 'Tesla Model 3',
-        model: 'Model 3',
-        year: 2023,
-        type: 'electric',
-        healthScore: 92,
-        status: 'optimal',
-        batteryLevel: 0.85,
-        mileage: 12500,
-        lastService: '2024-01-15',
-        aiInsight: 'Your Tesla is performing excellently. Battery health is optimal and no maintenance is required.',
-        tokenId: 8,
-        location: { latitude: 37.7749, longitude: -122.4194 }, // San Francisco
-      },
-      {
-        id: 'bmw-i4',
-        name: 'BMW i4',
-        model: 'i4',
-        year: 2024,
-        type: 'electric',
-        healthScore: 78,
-        status: 'attention',
-        batteryLevel: 0.65,
-        mileage: 8900,
-        lastService: '2024-02-01',
-        aiInsight: 'BMW i4 shows slight battery degradation. Consider scheduling a diagnostic check.',
-        tokenId: 8,
-        location: { latitude: 40.7128, longitude: -74.0060 }, // New York
-      },
-      {
-        id: 'honda-civic',
-        name: 'Honda Civic',
-        model: 'Civic',
-        year: 2022,
-        type: 'gas',
-        healthScore: 88,
-        status: 'optimal',
-        fuelLevel: 0.75,
-        mileage: 18500,
-        lastService: '2024-01-20',
-        aiInsight: 'Honda Civic is in great condition. Next oil change recommended in 2,000 miles.',
-        tokenId: 8,
-        location: { latitude: 34.0522, longitude: -118.2437 }, // Los Angeles
-      }
-    ];
-  },
-
-  getVehiclesForUser(userAuthData: UserAuthData): Promise<DimoVehicle[]> {
-    // Ensure all vehicles use the authenticated user's token ID
-    const vehicles = this.getVehicles();
-    return Promise.resolve(vehicles.map(vehicle => ({
-      ...vehicle,
-      tokenId: userAuthData.tokenId || 8
-    })));
-  }
+// Helper function to convert database vehicle to DimoVehicle format
+const convertDbVehicleToDimoVehicle = (dbVehicle: any): DimoVehicle => {
+  return {
+    id: dbVehicle.id,
+    name: dbVehicle.name,
+    model: dbVehicle.model,
+    year: dbVehicle.year,
+    type: dbVehicle.type,
+    healthScore: 85, // Default health score
+    status: 'optimal' as const,
+    fuelLevel: 0.60, // Default fuel level
+    mileage: 45000, // Default mileage
+    lastService: '2024-01-10', // Default last service
+    aiInsight: `Your ${dbVehicle.make} ${dbVehicle.model} is running smoothly. Regular maintenance schedule is up to date.`,
+    tokenId: dbVehicle.token_id,
+    location: { latitude: 37.7749, longitude: -122.4194 }, // Default location
+  };
 };
 
 export default function Dashboard() {
@@ -135,6 +81,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [authData, setAuthData] = useState<any>(null);
   const [selectedAIAnalysis, setSelectedAIAnalysis] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'vehicles' | 'documents' | 'mcp-test' | 'attestation-test'>('vehicles');
 
   // AI System Status Query - will be enabled once tRPC server is set up
   // const { data: aiStatus } = trpc.ai.getSystemStatus.useQuery();
@@ -162,23 +109,105 @@ export default function Dashboard() {
         };
       }
 
-      if (userAuthData && userAuthData.jwt) {
-        // Use real authenticated data
-        console.log('Using authenticated user data:', userAuthData);
-        const vehicleData = await mockVehicleService.getVehiclesForUser(userAuthData);
-        setVehicles(vehicleData);
+      // Try to load vehicles from database for authenticated user
+      if (userAuthData && userAuthData.walletAddress) {
+        try {
+          console.log('🚗 Loading vehicles for user:', userAuthData.walletAddress);
+          
+          // First, get the user from the database
+          const user = await db.getUserByWallet(userAuthData.walletAddress);
+          console.log('🚗 getUserByWallet result:', user);
+          
+          if (user) {
+            console.log('✅ Found user in database:', user.id);
+            
+            // Load vehicles for this user
+            const dbVehicles = await db.getVehiclesByUserId(user.id);
+            console.log('🚗 Loaded vehicles from database:', dbVehicles.length);
+            
+            // Convert to DimoVehicle format
+            const vehicleData = dbVehicles.map(convertDbVehicleToDimoVehicle);
+            setVehicles(vehicleData);
+          } else {
+            console.log('❌ User not found in database, using fallback');
+            // Create a fallback vehicle for document upload
+            const fallbackVehicle: DimoVehicle = {
+              id: '550e8400-e29b-41d4-a716-446655440000',
+              name: 'Demo Vehicle',
+              model: 'Demo Model',
+              year: 2024,
+              type: 'gas',
+              healthScore: 85,
+              status: 'optimal',
+              fuelLevel: 0.60,
+              mileage: 45000,
+              lastService: '2024-01-10',
+              aiInsight: 'Demo vehicle for testing document upload.',
+              tokenId: userAuthData.tokenId,
+              location: { latitude: 37.7749, longitude: -122.4194 },
+            };
+            setVehicles([fallbackVehicle]);
+          }
+        } catch (dbError) {
+          console.error('Database error loading vehicles:', dbError);
+          // Fallback to demo vehicle
+          const fallbackVehicle: DimoVehicle = {
+            id: '550e8400-e29b-41d4-a716-446655440000',
+            name: 'Demo Vehicle',
+            model: 'Demo Model',
+            year: 2024,
+            type: 'gas',
+            healthScore: 85,
+            status: 'optimal',
+            fuelLevel: 0.60,
+            mileage: 45000,
+            lastService: '2024-01-10',
+            aiInsight: 'Demo vehicle for testing document upload.',
+            tokenId: userAuthData.tokenId || 8,
+            location: { latitude: 37.7749, longitude: -122.4194 },
+          };
+          setVehicles([fallbackVehicle]);
+        }
       } else {
-        // Fallback to mock data for unauthenticated users
-        console.log('No auth data found, using mock data');
-        const vehicleData = mockVehicleService.getVehicles();
-        setVehicles(vehicleData);
+        // No auth data, use demo vehicle
+        console.log('No auth data found, using demo vehicle');
+        const fallbackVehicle: DimoVehicle = {
+          id: '550e8400-e29b-41d4-a716-446655440000',
+          name: 'Demo Vehicle',
+          model: 'Demo Model',
+          year: 2024,
+          type: 'gas',
+          healthScore: 85,
+          status: 'optimal',
+          fuelLevel: 0.60,
+          mileage: 45000,
+          lastService: '2024-01-10',
+          aiInsight: 'Demo vehicle for testing document upload.',
+          tokenId: 8,
+          location: { latitude: 37.7749, longitude: -122.4194 },
+        };
+        setVehicles([fallbackVehicle]);
       }
     } catch (err) {
       setError('Failed to load vehicles. Using mock data as fallback.');
       console.error('Error loading vehicles:', err);
-      // Load mock data as fallback
-      const vehicleData = mockVehicleService.getVehicles();
-      setVehicles(vehicleData);
+      // Load demo vehicle as fallback
+      const fallbackVehicle: DimoVehicle = {
+        id: '550e8400-e29b-41d4-a716-446655440000',
+        name: 'Demo Vehicle',
+        model: 'Demo Model',
+        year: 2024,
+        type: 'gas',
+        healthScore: 85,
+        status: 'optimal',
+        fuelLevel: 0.60,
+        mileage: 45000,
+        lastService: '2024-01-10',
+        aiInsight: 'Demo vehicle for testing document upload.',
+        tokenId: 8,
+        location: { latitude: 37.7749, longitude: -122.4194 },
+      };
+      setVehicles([fallbackVehicle]);
     } finally {
       setLoading(false);
     }
@@ -200,6 +229,16 @@ export default function Dashboard() {
       title: "AI Analysis Complete",
       description: "Vehicle analysis has been completed successfully.",
     });
+  };
+
+  const handleDocumentProcessed = (document: any) => {
+    toast({
+      title: "Document Processed Successfully",
+      description: `AI analysis completed for ${document.originalName}`,
+    });
+    
+    // You can add logic here to update vehicle information based on processed documents
+    console.log('Processed document:', document);
   };
 
   const getStatusColor = (status: string) => {
@@ -264,6 +303,46 @@ export default function Dashboard() {
         </Button>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+        <Button
+          variant={activeTab === 'vehicles' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('vehicles')}
+          className="flex items-center gap-2"
+        >
+          <Car className="h-4 w-4" />
+          Vehicles
+        </Button>
+        <Button
+          variant={activeTab === 'documents' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('documents')}
+          className="flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          Documents
+        </Button>
+        <Button
+          variant={activeTab === 'mcp-test' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('mcp-test')}
+          className="flex items-center gap-2"
+        >
+          <TestTube className="h-4 w-4" />
+          MCP Test
+        </Button>
+        <Button
+          variant={activeTab === 'attestation-test' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveTab('attestation-test')}
+          className="flex items-center gap-2"
+        >
+          <FileText className="h-4 w-4" />
+          Attestation Test
+        </Button>
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
@@ -271,120 +350,170 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* AI Status Banner */}
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-        <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <div className="flex-1">
-            <h3 className="font-medium">AI Vehicle Genius Available</h3>
-            <p className="text-sm text-muted-foreground">
-              Click AI action buttons on any vehicle card to get intelligent insights, maintenance recommendations, and trip readiness assessments.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Vehicle Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {vehicles.map((vehicle) => (
-          <VehicleCard
-            key={vehicle.id}
-            vehicle={vehicle}
-            onAIAnalysisComplete={handleAIAnalysisComplete}
-            showFullFeatures={true}
-          />
-        ))}
-      </div>
-
-      {/* AI Analysis Results */}
-      {selectedAIAnalysis && (
-        <div className="bg-gradient-to-r from-primary/10 to-blue-500/10 border border-primary/20 rounded-lg p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="h-6 w-6 text-primary" />
-            <h2 className="text-xl font-semibold">Latest AI Analysis Results</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {selectedAIAnalysis.healthScore !== undefined && (
-              <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="font-medium">Health Score</span>
-                </div>
-                <p className="text-2xl font-bold text-green-500 mt-2">
-                  {selectedAIAnalysis.healthScore}%
+      {/* Content based on active tab */}
+      {activeTab === 'vehicles' && (
+        <>
+          {/* AI Status Banner */}
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <div className="flex-1">
+                <h3 className="font-medium">AI Vehicle Genius Available</h3>
+                <p className="text-sm text-muted-foreground">
+                  Click AI action buttons on any vehicle card to get intelligent insights, maintenance recommendations, and trip readiness assessments.
                 </p>
-              </div>
-            )}
-            
-            {selectedAIAnalysis.readinessScore !== undefined && (
-              <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <Route className="h-5 w-5 text-blue-500" />
-                  <span className="font-medium">Trip Ready</span>
-                </div>
-                <p className={`text-2xl font-bold mt-2 ${selectedAIAnalysis.isReady ? 'text-green-500' : 'text-yellow-500'}`}>
-                  {selectedAIAnalysis.readinessScore}%
-                </p>
-              </div>
-            )}
-            
-            {selectedAIAnalysis.totalEstimatedCost !== undefined && (
-              <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <Wrench className="h-5 w-5 text-orange-500" />
-                  <span className="font-medium">Maintenance Cost</span>
-                </div>
-                <p className="text-2xl font-bold text-orange-500 mt-2">
-                  ${selectedAIAnalysis.totalEstimatedCost}
-                </p>
-              </div>
-            )}
-            
-            {selectedAIAnalysis.serviceCount !== undefined && (
-              <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5 text-purple-500" />
-                  <span className="font-medium">Services Found</span>
-                </div>
-                <p className="text-2xl font-bold text-purple-500 mt-2">
-                  {selectedAIAnalysis.serviceCount}
-                </p>
-              </div>
-            )}
-          </div>
-          
-          {selectedAIAnalysis.data?.response?.followUpSuggestions && (
-            <div className="mt-4 pt-4 border-t">
-              <h3 className="font-medium mb-2">AI Suggestions:</h3>
-              <div className="flex flex-wrap gap-2">
-                {selectedAIAnalysis.data.response.followUpSuggestions.map((suggestion: string, index: number) => (
-                  <Badge key={index} variant="secondary" className="text-sm">
-                    {suggestion}
-                  </Badge>
-                ))}
               </div>
             </div>
+          </div>
+
+          {/* Vehicle Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {vehicles.map((vehicle) => (
+              <VehicleCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                onAIAnalysisComplete={handleAIAnalysisComplete}
+                showFullFeatures={true}
+              />
+            ))}
+          </div>
+
+          {/* AI Analysis Results */}
+          {selectedAIAnalysis && (
+            <div className="bg-gradient-to-r from-primary/10 to-blue-500/10 border border-primary/20 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="h-6 w-6 text-primary" />
+                <h2 className="text-xl font-semibold">Latest AI Analysis Results</h2>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {selectedAIAnalysis.healthScore !== undefined && (
+                  <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <span className="font-medium">Health Score</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-500 mt-2">
+                      {selectedAIAnalysis.healthScore}%
+                    </p>
+                  </div>
+                )}
+                
+                {selectedAIAnalysis.readinessScore !== undefined && (
+                  <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <Route className="h-5 w-5 text-blue-500" />
+                      <span className="font-medium">Trip Ready</span>
+                    </div>
+                    <p className={`text-2xl font-bold mt-2 ${selectedAIAnalysis.isReady ? 'text-green-500' : 'text-yellow-500'}`}>
+                      {selectedAIAnalysis.readinessScore}%
+                    </p>
+                  </div>
+                )}
+                
+                {selectedAIAnalysis.totalEstimatedCost !== undefined && (
+                  <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-5 w-5 text-orange-500" />
+                      <span className="font-medium">Maintenance Cost</span>
+                    </div>
+                    <p className="text-2xl font-bold text-orange-500 mt-2">
+                      ${selectedAIAnalysis.totalEstimatedCost}
+                    </p>
+                  </div>
+                )}
+                
+                {selectedAIAnalysis.serviceCount !== undefined && (
+                  <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-purple-500" />
+                      <span className="font-medium">Services Found</span>
+                    </div>
+                    <p className="text-2xl font-bold text-purple-500 mt-2">
+                      {selectedAIAnalysis.serviceCount}
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              {selectedAIAnalysis.data?.response?.followUpSuggestions && (
+                <div className="mt-4 pt-4 border-t">
+                  <h3 className="font-medium mb-2">AI Suggestions:</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedAIAnalysis.data.response.followUpSuggestions.map((suggestion: string, index: number) => (
+                      <Badge key={index} variant="secondary" className="text-sm">
+                        {suggestion}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
+
+          {/* Add Vehicle Button */}
+          <div className="flex justify-center">
+            <Button variant="outline" size="lg">
+              <Plus className="h-5 w-5 mr-2" />
+              Add Vehicle
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Documents Tab */}
+      {activeTab === 'documents' && (
+        <div className="space-y-6">
+          <div className="bg-gray-800/50 dark:bg-gray-800/80 border border-gray-700 dark:border-gray-600 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-blue-500 dark:text-blue-400 mb-2">
+              Document Processing
+            </h3>
+            <p className="text-gray-300 dark:text-gray-300">
+              Upload car registration documents and oil change receipts to automatically extract vehicle information and maintenance schedules.
+            </p>
+          </div>
+          
+          <DocumentUpload 
+            vehicleId={vehicles[0]?.id || '550e8400-e29b-41d4-a716-446655440000'} 
+            tokenId={authData?.tokenId || 8}
+            onDocumentProcessed={handleDocumentProcessed}
+          />
         </div>
       )}
 
-      {/* Add Vehicle Button */}
-      <div className="flex justify-center">
-        <Button variant="outline" size="lg">
-          <Plus className="h-5 w-5 mr-2" />
-          Add Vehicle
-        </Button>
-      </div>
-
-      {/* MCP Server Test Section */}
-      <div className="mt-8">
-        <div className="flex items-center gap-2 mb-4">
-          <TestTube className="h-6 w-6 text-blue-500" />
-          <h2 className="text-xl font-semibold">DIMO MCP Server Test</h2>
+      {/* MCP Test Tab */}
+      {activeTab === 'mcp-test' && (
+        <div className="space-y-6">
+          <div className="bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <TestTube className="h-5 w-5 text-yellow-600" />
+              <h3 className="font-medium text-yellow-900 dark:text-yellow-100">DIMO MCP Server Test</h3>
+            </div>
+            <p className="text-sm text-yellow-700 dark:text-yellow-300">
+              Test the DIMO MCP server integration and verify vehicle data access.
+            </p>
+          </div>
+          
+          <McpTest />
         </div>
-        <McpTest />
-      </div>
+      )}
+
+      {/* Attestation Test Tab */}
+      {activeTab === 'attestation-test' && (
+        <div className="space-y-6">
+          <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              <h3 className="font-medium text-blue-900 dark:text-blue-100">DIMO Attestation Service Test</h3>
+            </div>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              Test the DIMO attestation service and verify document attestation to attest.dimo.zone.
+            </p>
+          </div>
+          
+          <DimoAttestationTest />
+        </div>
+      )}
     </div>
   );
 }

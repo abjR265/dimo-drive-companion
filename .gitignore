@@ -31,6 +31,8 @@ dist-ssr
 .env.development
 .env.test
 .env.production
+.env.backup
+.env.openai
 
 # API Keys and Secrets
 *.key
@@ -86,6 +88,232 @@ jspm_packages/
 
 # Optional stylelint cache
 .stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache
+.parcel-cache
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# Bun lock file
+bun.lockb
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE files
+*.swp
+*.swo
+*~
+
+# Local configuration files
+config.local.*
+settings.local.*
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test files
+test-results/
+playwright-report/
+test-results.xml
+
+# Documentation with sensitive data (exclude all .md files as requested)
+*.md
+!README.md
+
+# Sensitive configuration files
+secrets.json
+config.json
+credentials.json
+
+# Additional security exclusions
+# Hardcoded API keys and sensitive data
+**/K81834588988957
+**/K81634588988957
+**/sk-proj-*
+
+# Production deployment files with sensitive data
+setup-production-env.sh
+setup-openai.sh
+setup-mcp-server.sh
+
+# MCP server environment files
+mcp-dimo/.env
+mcp-dimo/.env.*
+
+# Lock files that might contain sensitive data
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Log files that might contain sensitive data
+*.log
+logs/
+
+# Database dumps and backups
+*.sql
+*.dump
+backup/
+
+# SSL certificates and keys
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+
+# Docker secrets
+docker-secrets/
+secrets/
+
+# Kubernetes secrets
+k8s-secrets/
+*.yaml
+*.yml
+!k8s-manifests/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Ansible vault files
+*.vault
+
+# SSH keys
+id_rsa
+id_rsa.pub
+*.ppk
+
+# GPG keys
+*.gpg
+*.asc
+
+# Local development files
+.local/
+local/
+
+# IDE specific files
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
+
+# OS specific files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary and cache files
+*.tmp
+*.temp
+.cache/
+.temp/
+
+# Build artifacts
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# Coverage reports
+coverage/
+.nyc_output/
+*.lcov
+
+# Dependency lock files (optional - uncomment if you want to exclude them)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# Environment specific files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test results
+test-results/
+playwright-report/
+test-results.xml
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
 
 # Microbundle cache
 .rpt2_cache/

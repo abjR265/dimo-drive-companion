@@ -76,7 +76,10 @@ class DimoMcpClient {
   async telemetryQuery(request: DimoTelemetryQuery): Promise<DimoMcpResponse> {
     return this.callMcpTool('telemetry_query', {
       query: request.query,
-      variables: request.variables || {},
+      variables: {
+        ...request.variables,
+        tokenId: request.tokenId.toString(),
+      },
       tokenId: request.tokenId,
     });
   }
@@ -92,6 +95,8 @@ class DimoMcpClient {
       ...(request.tokenId && { tokenId: request.tokenId }),
     });
   }
+
+
 
   /**
    * Search for vehicles in DIMO
@@ -218,15 +223,12 @@ class DimoMcpClient {
     return this.identityQuery({
       query: `{
         vehicle(tokenId: ${tokenId}) {
-          id
+          owner
           tokenId
-          make
-          model
-          year
-          vin
-          owner {
-            id
-            username
+          definition {
+            make
+            model
+            year
           }
         }
       }`,
@@ -298,13 +300,4 @@ export const dimoMcpClient = new DimoMcpClient({
   privateKey: import.meta.env.VITE_DIMO_PRIVATE_KEY || '',
 });
 
-// Export types for use in other components
-export type {
-  DimoMcpConfig,
-  DimoIdentityQuery,
-  DimoTelemetryQuery,
-  DimoVinOperation,
-  DimoVehicleSearch,
-  DimoAttestation,
-  DimoMcpResponse,
-}; 
+ 
