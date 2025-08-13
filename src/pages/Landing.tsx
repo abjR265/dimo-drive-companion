@@ -107,23 +107,10 @@ export default function Landing() {
                         redirectUri={import.meta.env.VITE_DIMO_REDIRECT_URI || ''}
                         apiKey={import.meta.env.VITE_DIMO_API_KEY || ''}
                         onSuccess={async (authData: any) => {
-                          console.log('DIMO Login Success:', authData);
-                          console.log('AuthData type:', typeof authData);
-                          console.log('AuthData keys:', Object.keys(authData || {}));
-                          console.log('Full authData object:', JSON.stringify(authData, null, 2));
+                              // DIMO Login Success - auth data received
                           
                           // Debug: Check for wallet address in different possible locations
-                          console.log('=== WALLET ADDRESS DEBUG ===');
-                          console.log('authData.address:', authData.address);
-                          console.log('authData.walletAddress:', authData.walletAddress);
-                          console.log('authData.user?.address:', authData.user?.address);
-                          console.log('authData.user?.walletAddress:', authData.user?.walletAddress);
-                          console.log('authData.ethereumAddress:', authData.ethereumAddress);
-                          console.log('authData.sub:', authData.sub); // JWT subject might contain address
-                          console.log('authData.eth_address:', authData.eth_address);
-                          console.log('authData.wallet_address:', authData.wallet_address);
-                          console.log('authData.owner:', authData.owner);
-                          console.log('=== END DEBUG ===');
+                              // Wallet address debug information (sanitized)
                           
                           try {
                             // Extract user data from auth response
@@ -146,14 +133,14 @@ export default function Landing() {
                             if (!walletAddress && userJWT) {
                               try {
                                 const jwtPayload = JSON.parse(atob(userJWT.split('.')[1]));
-                                console.log('JWT Payload:', jwtPayload);
+                                // JWT Payload extracted
                                 walletAddress = jwtPayload.sub || 
                                                jwtPayload.address || 
                                                jwtPayload.wallet_address ||
                                                jwtPayload.eth_address ||
                                                jwtPayload.owner ||
                                                null;
-                                console.log('Extracted wallet address from JWT:', walletAddress);
+                                // Wallet address extracted from JWT
                               } catch (error) {
                                 console.error('Failed to decode JWT payload:', error);
                               }
@@ -184,7 +171,7 @@ export default function Landing() {
                                     // Look for ethereum_address in the JWT
                                     if (jwtPayload.ethereum_address) {
                                       walletAddress = jwtPayload.ethereum_address;
-                                      console.log('Found ethereum_address in JWT:', walletAddress);
+                                      // Found ethereum_address in JWT
                                     } else {
                                       console.error('No valid Ethereum address found in JWT payload');
                                       walletAddress = null;
@@ -195,11 +182,11 @@ export default function Landing() {
                                   }
                                 }
                                 
-                                console.log('Final wallet address:', walletAddress);
+                                // Final wallet address determined
                                 
                                 // Validate the address format
                                 if (walletAddress && walletAddress.length === 42 && walletAddress.startsWith('0x')) {
-                                  console.log('Valid Ethereum address:', walletAddress);
+                                  // Valid Ethereum address confirmed
                                 } else {
                                   console.error('Invalid Ethereum address format:', walletAddress);
                                   walletAddress = null;
@@ -217,8 +204,8 @@ export default function Landing() {
 
                             if (!walletAddress) {
                               console.error('No wallet address found in auth data');
-                              console.log('Available auth data keys:', Object.keys(authData));
-                              console.log('JWT payload (if available):', userJWT.split('.')[1] ? JSON.parse(atob(userJWT.split('.')[1])) : 'Cannot decode JWT');
+                              // Available auth data keys
+                              // JWT payload available
                               // Continue anyway, wallet address is optional for now
                             }
 
@@ -226,10 +213,7 @@ export default function Landing() {
                             const firstVehicle = userVehicles[0];
                             const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
 
-                            console.log('User JWT:', userJWT);
-                            console.log('User Vehicles:', userVehicles);
-                            console.log('Wallet Address:', walletAddress);
-                            console.log('Using Token ID:', tokenId);
+                                  // User authentication data processed
 
                             // Store auth data in localStorage for the dashboard
                             localStorage.setItem('dimoAuth', JSON.stringify({

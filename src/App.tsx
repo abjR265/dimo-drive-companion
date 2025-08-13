@@ -34,12 +34,14 @@ const App = () => {
   const [trpcClient] = useState(() => trpc.createClient(trpcClientConfig));
 
   useEffect(() => {
-    console.log('Environment variables:', {
-      clientId: import.meta.env.VITE_DIMO_CLIENT_ID,
-      redirectUri: import.meta.env.VITE_DIMO_REDIRECT_URI,
-      apiKey: import.meta.env.VITE_DIMO_API_KEY ? 'SET' : 'NOT SET',
-      n8nWebhook: import.meta.env.VITE_N8N_WEBHOOK_URL ? 'SET' : 'NOT SET'
-    });
+    // Environment variables check (sanitized)
+    const hasRequiredEnvVars = import.meta.env.VITE_DIMO_CLIENT_ID && 
+                              import.meta.env.VITE_DIMO_API_KEY && 
+                              import.meta.env.VITE_DIMO_DOMAIN;
+    
+    if (!hasRequiredEnvVars) {
+      console.warn('⚠️ Some DIMO environment variables are not configured');
+    }
     
     initializeDimoSDK({
       clientId: import.meta.env.VITE_DIMO_CLIENT_ID || '',

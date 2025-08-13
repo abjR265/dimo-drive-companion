@@ -1,6 +1,53 @@
 import { ethers } from 'ethers';
 import { PrivacySettings, DEFAULT_PRIVACY_SETTINGS } from '@/types/privacy';
 
+// Debug mode flag - set to false in production
+const DEBUG_MODE = import.meta.env.VITE_DEBUG_MODE === 'true';
+
+// Utility function to sanitize sensitive data in logs
+const sanitizeForLogging = (data: any, sensitiveFields: string[] = []): any => {
+  if (typeof data === 'string') {
+    // Hide API keys, private keys, VINs, and other sensitive strings
+    if (data.includes('0x') && data.length > 40) {
+      return data.substring(0, 10) + '...' + data.substring(data.length - 4);
+    }
+    if (data.length > 20) {
+      return data.substring(0, 8) + '...' + data.substring(data.length - 4);
+    }
+    return data;
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    const sanitized = { ...data };
+    const fieldsToHide = [
+      'apiKey', 'privateKey', 'signature', 'jwt', 'access_token', 'token',
+      'vin', 'plateNumber', 'policyNumber', 'ownerName', 'ownerAddress',
+      'premium', 'totalCost', 'extractedText', 'challenge', 'state'
+    ];
+    
+    fieldsToHide.forEach(field => {
+      if (sanitized[field]) {
+        if (typeof sanitized[field] === 'string' && sanitized[field].length > 10) {
+          sanitized[field] = sanitized[field].substring(0, 8) + '...';
+        } else {
+          sanitized[field] = '[HIDDEN]';
+        }
+      }
+    });
+    
+    // Recursively sanitize nested objects
+    Object.keys(sanitized).forEach(key => {
+      if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+        sanitized[key] = sanitizeForLogging(sanitized[key], sensitiveFields);
+      }
+    });
+    
+    return sanitized;
+  }
+  
+  return data;
+};
+
 export interface DocumentAnalysis {
   documentType: 'car_registration' | 'insurance' | 'oil_change_receipt' | 'service_invoice' | 'unknown';
   extractedText?: string;
@@ -108,11 +155,11 @@ export class DimoAttestationService {
       source: this.clientId, // Your connection license address
       producer: `did:ethr:80002:${this.clientId}`, // Your developer license DID
       specversion: "1.0",
-      subject: `did:nft:80002:${import.meta.env.VITE_DIMO_VEHICLE_CONTRACT_ADDRESS || '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'}_${vehicleTokenId}`, // Vehicle DID
+      subject: `did:erc721:80002:${import.meta.env.VITE_DIMO_VEHICLE_CONTRACT_ADDRESS || '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'}:${vehicleTokenId}`, // Vehicle DID
       time: new Date().toISOString(),
       type: "dimo.attestation",
       data: {
-        subject: `did:nft:80002:${import.meta.env.VITE_DIMO_VEHICLE_CONTRACT_ADDRESS || '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'}_${vehicleTokenId}`,
+        subject: `did:erc721:80002:${import.meta.env.VITE_DIMO_VEHICLE_CONTRACT_ADDRESS || '0x45fbCD3ef7361d156e8b16F5538AE36DEdf61Da8'}:${vehicleTokenId}`,
         attestorAddress: this.clientId,
         documentType: this.mapDocumentType(documentData.documentType),
         vin: documentData.vin,
@@ -143,63 +190,109 @@ export class DimoAttestationService {
 
   private async postToAttestDimo(payload: any, jwt: string): Promise<boolean> {
     try {
-      console.log('Posting attestation to attest.dimo.zone');
-      console.log('Payload:', JSON.stringify(payload, null, 2));
+      if (DEBUG_MODE) {
+        console.log('Posting attestation via CORS proxy');
+        console.log('Payload:', JSON.stringify(sanitizeForLogging(payload), null, 2));
+      }
       
-      const response = await fetch('https://attest.dimo.zone', {
+      // Use local proxy server to avoid CORS issues
+      const response = await fetch('http://localhost:3003/api/dimo-attestation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${jwt}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({
+          payload,
+          jwt
+        })
       });
 
+      const responseText = await response.text();
+      if (DEBUG_MODE) {
+        console.log('Raw response from DIMO:', sanitizeForLogging(responseText));
+      }
+      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Attestation failed:', response.status, errorText);
+        console.error('Attestation failed:', response.status, sanitizeForLogging(responseText));
         return false;
       }
 
-      const result = await response.json();
-      console.log('Attestation response:', result);
+      // Try to parse as JSON if there's content
+      if (responseText.trim()) {
+        try {
+          const result = JSON.parse(responseText);
+          if (DEBUG_MODE) {
+            console.log('Attestation response:', sanitizeForLogging(result));
+          }
+        } catch (parseError) {
+                      if (DEBUG_MODE) {
+              console.log('Response is not JSON, treating as success:', sanitizeForLogging(responseText));
+            }
+        }
+      } else {
+        console.log('Empty response from DIMO, treating as success');
+      }
+      
       return true;
     } catch (error) {
-      console.error('Error posting to attest.dimo.zone:', error);
+      console.error('Error posting attestation:', error);
       return false;
     }
   }
 
   private async getJWT(): Promise<string> {
-    // Use API key authentication for DIMO
+    // Use web3 authentication for DIMO as documented
     if (this.jwt && Date.now() < this.jwtExpiry) {
       console.log('Using cached JWT');
       return this.jwt;
     }
 
-    console.log('Getting new JWT from DIMO using API key');
+    console.log('Getting new JWT from DIMO using web3 authentication');
     
     try {
-      // Use API key to get JWT
-      const response = await fetch('https://auth.dimo.zone/auth/api/token', {
+      // Step 1: Generate challenge
+      console.log('Domain being used:', sanitizeForLogging(this.domain));
+      const challengeUrl = `https://auth.dimo.zone/auth/web3/generate_challenge?client_id=${this.clientId}&domain=${this.domain}&scope=openid email&response_type=code&address=${this.clientId}`;
+      console.log('Generating challenge from:', sanitizeForLogging(challengeUrl));
+      
+      const challengeResponse = await fetch(challengeUrl);
+      
+      if (!challengeResponse.ok) {
+        const errorText = await challengeResponse.text();
+        console.error('Challenge generation failed:', challengeResponse.status, errorText);
+        throw new Error(`Failed to generate challenge: ${challengeResponse.statusText} - ${errorText}`);
+      }
+      
+      const challengeData = await challengeResponse.json();
+      console.log('Challenge generated successfully:', sanitizeForLogging(challengeData));
+      
+      // Step 2: Sign the challenge using the API key as a private key
+      const signature = await this.signChallenge(challengeData.challenge);
+      console.log('Challenge signed successfully');
+      
+      // Step 3: Submit challenge
+      const submitResponse = await fetch('https://auth.dimo.zone/auth/web3/submit_challenge', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({
+        body: new URLSearchParams({
           client_id: this.clientId,
-          grant_type: 'client_credentials'
+          state: challengeData.state,
+          grant_type: 'authorization_code',
+          domain: this.domain,
+          signature: signature
         })
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to get JWT: ${response.statusText} - ${errorText}`);
+      if (!submitResponse.ok) {
+        const errorText = await submitResponse.text();
+        console.error('Challenge submission failed:', submitResponse.status, errorText);
+        throw new Error(`Failed to submit challenge: ${submitResponse.statusText} - ${errorText}`);
       }
       
-      const tokenData = await response.json();
-      console.log('JWT obtained successfully using API key');
+      const tokenData = await submitResponse.json();
+      console.log('JWT obtained successfully using web3 authentication');
       
       this.jwt = tokenData.access_token;
       this.jwtExpiry = Date.now() + (tokenData.expires_in * 1000);
@@ -211,12 +304,50 @@ export class DimoAttestationService {
     }
   }
 
+  private async signChallenge(challenge: string): Promise<string> {
+    try {
+      // Try using the API key directly as a private key
+      // If it's already a valid hex string, use it as-is
+      let privateKey = this.apiKey;
+      
+      // If it doesn't start with 0x, add it
+      if (!privateKey.startsWith('0x')) {
+        privateKey = '0x' + privateKey;
+      }
+      
+      if (DEBUG_MODE) {
+        console.log('Using API key as private key:', sanitizeForLogging(privateKey));
+      }
+      
+      const wallet = new ethers.Wallet(privateKey);
+      
+      // Sign the challenge message
+      const signature = await wallet.signMessage(challenge);
+      console.log('Challenge signed successfully');
+      return signature;
+    } catch (error) {
+      console.error('Failed to sign challenge:', error);
+      throw new Error('Failed to sign challenge');
+    }
+  }
+
   private async signPayload(data: any): Promise<string> {
     try {
-      // For API key authentication, we don't need to sign the payload
-      // The API key provides the authentication
-      console.log('Using API key authentication - no payload signing required');
-      return '0x' + '0'.repeat(130); // Return a placeholder signature
+      // Sign the payload data using the API key as private key
+      let privateKey = this.apiKey;
+      
+      // If it doesn't start with 0x, add it
+      if (!privateKey.startsWith('0x')) {
+        privateKey = '0x' + privateKey;
+      }
+      
+      const wallet = new ethers.Wallet(privateKey);
+      
+      // Sign the JSON string directly (ethers will handle the hashing)
+      const messageToSign = JSON.stringify(data);
+      const signature = await wallet.signMessage(messageToSign);
+      console.log('Payload signed successfully');
+      return signature;
     } catch (error) {
       console.error('Failed to sign payload:', error);
       throw new Error('Failed to sign attestation payload');

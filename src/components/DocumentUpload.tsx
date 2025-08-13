@@ -27,6 +27,8 @@ import { toast } from "@/hooks/use-toast";
 import { db } from "@/lib/supabase";
 import { getBestAvailableProcessor, DOCUMENT_PROCESSING_CONFIG } from "@/config/documentProcessing";
 import { VehicleMatcher, DocumentMatch } from "@/services/vehicleMatcher";
+import { DimoAttestationService } from "@/services/dimoAttestationService";
+import { DEFAULT_PRIVACY_SETTINGS } from "@/types/privacy";
 
 interface Document {
   id: string;
@@ -93,6 +95,7 @@ interface Document {
     };
   };
   status: 'uploading' | 'processing' | 'completed' | 'error';
+  dimoAttested?: boolean; // Track if document has been attested to DIMO
 }
 
 interface DocumentUploadProps {
@@ -109,6 +112,13 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
   const [processingMethod, setProcessingMethod] = useState<string>('');
   const [vehicleMatcher] = useState(() => new VehicleMatcher());
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Initialize DIMO attestation service
+  const [dimoAttestationService] = useState(() => new DimoAttestationService(
+    import.meta.env.VITE_DIMO_CLIENT_ID || '',
+    import.meta.env.VITE_DIMO_API_KEY || '',
+    import.meta.env.VITE_DIMO_DOMAIN || ''
+  ));
   const [processingProgress, setProcessingProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
@@ -122,7 +132,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         setDocumentProcessor(processor);
         setProcessingMethod(DOCUMENT_PROCESSING_CONFIG.method);
         
-        console.log(`Document processing initialized with method: ${DOCUMENT_PROCESSING_CONFIG.method}`);
+        // Document processing initialized
       } catch (error) {
         console.error('Failed to initialize document processor:', error);
         toast({
@@ -148,7 +158,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         const walletAddress = parsedAuth.walletAddress;
         const userTokenId = parsedAuth.tokenId; // This should be 8 for your current vehicle
         
-        console.log('User token ID from auth:', userTokenId);
+        // User token ID retrieved from auth
         
         if (!walletAddress) return;
         
@@ -166,17 +176,17 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         }
         
         // Also check if there are any documents with the user's token ID directly
-        console.log('Loading documents for token IDs:', tokenIds);
+        // Loading documents for user's token IDs
         
         // Load all documents for these token IDs
         const rows = await db.getDocumentsForUserByTokenIds(tokenIds);
-        console.log('Loaded documents for user:', rows.length);
+        // Documents loaded for user
         
         // If no documents found with the user's token IDs, try to find documents by user's main token ID
         if (rows.length === 0 && userTokenId) {
-          console.log('No documents found with user vehicles, trying direct token ID lookup');
+          // No documents found with user vehicles, trying direct token ID lookup
           const directRows = await db.getDocumentsByTokenId(userTokenId);
-          console.log('Found documents with direct token ID lookup:', directRows.length);
+          // Documents found with direct token ID lookup
           rows.push(...directRows);
         }
         
@@ -192,7 +202,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
           status: 'completed',
         }));
         
-        console.log('Processed documents:', allDocuments.length);
+        // Documents processed and loaded
         setDocuments(allDocuments);
       } catch (error) {
         console.error('Failed to load existing documents:', error);
@@ -292,7 +302,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
       const storagePath = `${targetVehicleId}/${id}-${file.name}`;
       try {
         await db.uploadFile(file, storagePath);
-        console.log('File uploaded to storage:', storagePath);
+        // File uploaded to storage successfully
       } catch (uploadError) {
         console.error('Failed to upload file to storage:', uploadError);
       }
@@ -310,7 +320,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
           processedData,
           storagePath
         });
-        console.log('Document saved to database successfully', createdDbDoc?.id);
+        // Document saved to database successfully
       } catch (dbError) {
         console.error('Failed to save document to database:', dbError);
         toast({
@@ -343,10 +353,57 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
 
           // Create alerts using the database document ID to satisfy FK constraint
           const alerts = await db.createAlertsFromDocument(documentIdForAlerts, targetVehicleId, processedData);
-          console.log('Created alerts from document:', alerts.length);
+          // Alerts created from document
         } catch (alertError) {
           console.warn('Failed to create alerts:', alertError);
         }
+      }
+
+      // Create DIMO attestation for the processed document
+      try {
+        // Check if DIMO environment variables are configured
+        const hasDimoConfig = import.meta.env.VITE_DIMO_CLIENT_ID && 
+                             import.meta.env.VITE_DIMO_API_KEY && 
+                             import.meta.env.VITE_DIMO_DOMAIN;
+        
+        if (!hasDimoConfig) {
+          // DIMO environment variables not configured, skipping attestation
+          document.dimoAttested = false;
+        } else {
+          updateProgress(95, 'Creating DIMO attestation...');
+          
+          const vehicleTokenId = tokenId || vehicleMatch?.tokenId || 8;
+          const attestationSuccess = await dimoAttestationService.createDocumentAttestation(
+            processedData,
+            vehicleTokenId,
+            DEFAULT_PRIVACY_SETTINGS
+          );
+        
+        if (attestationSuccess) {
+          // Document attested successfully to DIMO
+          // Update the document with attestation status
+          document.dimoAttested = true;
+          toast({
+            title: "DIMO Attestation Created",
+            description: "Document data has been attested to DIMO blockchain",
+          });
+        } else {
+          console.warn('Failed to create DIMO attestation');
+          document.dimoAttested = false;
+          toast({
+            title: "Attestation Warning",
+            description: "Document processed but DIMO attestation failed",
+            variant: "destructive",
+          });
+        }
+        }
+      } catch (attestationError) {
+        console.error('Error creating DIMO attestation:', attestationError);
+        toast({
+          title: "Attestation Error",
+          description: "Document processed but failed to create DIMO attestation",
+          variant: "destructive",
+        });
       }
       
       toast({
@@ -634,6 +691,12 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
                       <Badge variant="secondary" className="text-xs">
                         {doc.processedData.documentType === 'car_registration' ? 'Registration' : 
                          doc.processedData.documentType === 'oil_change_receipt' ? 'Oil Change' : 'Document'}
+                      </Badge>
+                    )}
+                    {doc.dimoAttested && (
+                      <Badge variant="default" className="text-xs bg-green-500 hover:bg-green-600">
+                        <Shield className="h-3 w-3 mr-1" />
+                        DIMO Attested
                       </Badge>
                     )}
                     <Button

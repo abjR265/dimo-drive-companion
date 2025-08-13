@@ -112,14 +112,14 @@ export default function Dashboard() {
       // Try to load vehicles from database for authenticated user
       if (userAuthData && userAuthData.walletAddress) {
         try {
-          console.log('🚗 Loading vehicles for user:', userAuthData.walletAddress);
+          // Loading vehicles for user (wallet address sanitized)
           
           // First, get the user from the database
           const user = await db.getUserByWallet(userAuthData.walletAddress);
-          console.log('🚗 getUserByWallet result:', user);
+          // User retrieved from database
           
           if (user) {
-            console.log('✅ Found user in database:', user.id);
+            console.log('✅ Found user in database');
             
             // Load vehicles for this user
             const dbVehicles = await db.getVehiclesByUserId(user.id);

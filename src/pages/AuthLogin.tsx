@@ -30,7 +30,7 @@ export default function AuthLogin() {
 
   // Handle successful DIMO login
   const handleDimoSuccess = async (authData: any) => {
-    console.log('DIMO Login Success:', authData);
+    // DIMO Login Success
     
     try {
       // Extract user data from auth response
@@ -52,7 +52,7 @@ export default function AuthLogin() {
 
       if (!walletAddress) {
         console.error('No wallet address found in auth data');
-        console.log('Available auth data keys:', Object.keys(authData));
+        // Auth data keys available
         // Continue anyway, wallet address is optional for now
       }
 
@@ -60,10 +60,7 @@ export default function AuthLogin() {
       const firstVehicle = userVehicles[0];
       const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
 
-      console.log('User JWT:', userJWT);
-      console.log('User Vehicles:', userVehicles);
-      console.log('Wallet Address:', walletAddress);
-      console.log('Using Token ID:', tokenId);
+      // User authentication data processed
 
       // Store auth data in localStorage for the dashboard
       localStorage.setItem('dimoAuth', JSON.stringify({

@@ -107,7 +107,7 @@ const callOpenAI = async (messages: any[], functions?: any[]) => {
 const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
   try {
     // Step 1: Gather real vehicle data from MCP
-    console.log('🔍 Gathering vehicle data from DIMO MCP...');
+    // Gathering vehicle data from DIMO MCP
     
     const vehicleData: any = {};
     
@@ -130,7 +130,7 @@ const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
       
       if (identityResult.success && identityResult.data?.vehicle) {
         vehicleData.identity = identityResult.data.vehicle;
-        console.log('✅ Vehicle identity retrieved:', vehicleData.identity);
+        // Vehicle identity retrieved
       }
     } catch (error) {
       console.warn('⚠️ Identity query failed:', error);
@@ -245,13 +245,13 @@ const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
           current: currentTelemetryResult.data?.signalsLatest,
           historical: historicalTelemetryResult.data?.signals
         };
-        console.log('✅ Vehicle telemetry retrieved (current + historical):', vehicleData.telemetry);
+        // Vehicle telemetry retrieved (current + historical)
       } else if (currentTelemetryResult.success) {
         vehicleData.telemetry = {
           current: currentTelemetryResult.data?.signalsLatest,
           historical: []
         };
-        console.log('✅ Vehicle telemetry retrieved (current only):', vehicleData.telemetry);
+        // Vehicle telemetry retrieved (current only)
       }
     } catch (error) {
       console.warn('⚠️ Telemetry query failed:', error);
@@ -395,10 +395,10 @@ Always use the provided functions to structure your responses. Be helpful, accur
     };
 
     // Step 5: Call OpenAI with real vehicle data
-    console.log('🤖 Calling OpenAI with real vehicle data...');
+    // Calling OpenAI with real vehicle data
     const aiResponse = await callOpenAI([systemMessage, userMessage], functions);
     
-    console.log('✅ OpenAI response received:', aiResponse);
+    // OpenAI response received
     
     // Step 6: Parse the response
     if (aiResponse.function_call) {
@@ -603,7 +603,7 @@ What would you like to know about your Mercedes today?`,
     addMessage(userMessage, 'user');
 
     try {
-      console.log('🤖 Starting real AI analysis...');
+      // Starting real AI analysis
       
       // Use real AI analysis with OpenAI + MCP
       const aiResult = await performRealAIAnalysis(userMessage, selectedVehicle);

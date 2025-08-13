@@ -77,6 +77,22 @@ const conversationSchema = z.object({
   }).optional(),
 });
 
+// DIMO attestation schema
+const dimoAttestationSchema = z.object({
+  payload: z.object({
+    id: z.string(),
+    source: z.string(),
+    producer: z.string().optional(),
+    specversion: z.string(),
+    subject: z.string(),
+    time: z.string(),
+    type: z.string(),
+    signature: z.string(),
+    data: z.record(z.any()),
+  }),
+  jwt: z.string(),
+});
+
 /**
  * Enhanced AI Router with Vehicle Genius Agent Integration
  * 
@@ -89,6 +105,40 @@ const conversationSchema = z.object({
  */
 export const aiRouter = router({
   
+  /**
+   * DIMO Attestation Proxy
+   * Handles CORS issues by proxying attestation requests through the backend
+   */
+  postDimoAttestation: publicProcedure
+    .input(dimoAttestationSchema)
+    .mutation(async ({ input }) => {
+      console.log('Posting DIMO attestation via proxy');
+      
+      try {
+        const response = await fetch('https://attest.dimo.zone/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${input.jwt}`
+          },
+          body: JSON.stringify(input.payload)
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Attestation proxy failed:', response.status, errorText);
+          throw new Error(`Attestation failed: ${response.statusText} - ${errorText}`);
+        }
+
+        const result = await response.json();
+        console.log('Attestation proxy successful:', result);
+        return { success: true, data: result };
+      } catch (error) {
+        console.error('Error in attestation proxy:', error);
+        throw new Error('Failed to post attestation via proxy');
+      }
+    }),
+
   /**
    * General vehicle question endpoint
    * Sends any vehicle-related question to the AI agent
