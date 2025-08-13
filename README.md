@@ -4,6 +4,17 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 
 ## Tech Stack
 
+![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black&style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white&style=for-the-badge)
+![Vite](https://img.shields.io/badge/Vite-5.4+-646CFF?logo=vite&logoColor=white&style=for-the-badge)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4+-06B6D4?logo=tailwindcss&logoColor=white&style=for-the-badge)
+![Radix UI](https://img.shields.io/badge/Radix_UI-1.0+-161618?logo=radixui&logoColor=white&style=for-the-badge)
+![tRPC](https://img.shields.io/badge/tRPC-11.4+-2596BE?logo=trpc&logoColor=white&style=for-the-badge)
+![Supabase](https://img.shields.io/badge/Supabase-2.53+-3ECF8E?logo=supabase&logoColor=white&style=for-the-badge)
+![OpenAI](https://img.shields.io/badge/OpenAI-GPT_4+-412991?logo=openai&logoColor=white&style=for-the-badge)
+![DIMO](https://img.shields.io/badge/DIMO_Network-1.3+-000000?logo=dimo&logoColor=white&style=for-the-badge)
+
+
 ### Frontend Technologies
 - [React 18](https://react.dev/) - UI framework
 - [TypeScript](https://www.typescriptlang.org/) - Type-safe development
@@ -20,7 +31,6 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 - [Lucide React](https://lucide.dev/) - Icon library
 
 ### Backend & AI Integration
-- [n8n Cloud](https://n8n.io/) - Workflow automation platform
 - [OpenAI API](https://platform.openai.com/) - AI language models
 - [DIMO Network](https://dimo.zone/) - Vehicle data platform
 - [Model Context Protocol](https://modelcontextprotocol.io/) - AI assistant integration
@@ -84,12 +94,9 @@ DIMO AI is a comprehensive vehicle management platform that leverages artificial
 - TanStack Query for efficient data fetching and caching
 
 ### Backend & AI Integration
-- n8n Cloud Workflows: Sophisticated AI processing pipeline
-- Vehicle Genius Agent: Main AI workflow with multiple tools:
-  - OpenAI Chat Model for intelligent analysis
-  - DIMO Telemetry Fetch for real-time vehicle data
-  - Nearby Search for service locations
-  - HTTP Request for external API integration
+- OpenAI API: Advanced AI language models for intelligent analysis
+- DIMO Telemetry Integration: Real-time vehicle data processing
+- External API Integration: Weather, traffic, and service provider APIs
 - DIMO MCP Server: Model Context Protocol integration for AI assistants
 - tRPC Server: Type-safe backend API with validation
 
@@ -105,7 +112,6 @@ DIMO AI is a comprehensive vehicle management platform that leverages artificial
 ### Prerequisites
 - Node.js 18+ 
 - DIMO Developer Account ([console.dimo.org](https://console.dimo.org))
-- n8n Cloud Account (for AI workflows)
 - OpenAI API Key (for advanced AI features)
 
 ### Installation
@@ -208,11 +214,7 @@ dimo-ai-web/
 3. Configure environment variables for authentication
 4. Set up vehicle permissions and privileges
 
-### n8n AI Workflow Setup
-1. Create an n8n Cloud account at [app.n8n.cloud](https://app.n8n.cloud)
-2. Import the Vehicle Genius Agent workflow
-3. Configure webhook endpoints and API keys
-4. Test the AI agent with sample vehicle data
+
 
 ### MCP Server (Optional)
 1. Navigate to `mcp-dimo/` directory
@@ -243,7 +245,7 @@ dimo-ai-web/
 - Real-time Data Integration: Live telemetry and historical data
 - Advanced AI Analysis: OpenAI GPT-4 powered insights
 
-### AI Vehicle Genius
+### AI Vehicle Analysis
 - Health Analysis: Comprehensive system diagnostics
 - Maintenance Checks: Service interval and wear item analysis
 - Trip Readiness: Pre-trip safety and preparation assessment
@@ -352,7 +354,6 @@ npm run test:watch   # Watch mode for development
 
 ### Integration Testing
 - MCP Server connectivity tests
-- n8n workflow integration tests
 - DIMO API authentication tests
 - OpenAI API integration tests
 
@@ -413,7 +414,6 @@ npm run test:watch   # Watch mode for development
 ### Additional Resources
 - [DIMO Developer Documentation](https://docs.dimo.org/)
 - [DIMO GraphQL Playground](https://identity-api.dimo.zone/)
-- [n8n Documentation](https://docs.n8n.io/)
 - [MCP Protocol](https://modelcontextprotocol.io/)
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 
@@ -432,10 +432,10 @@ npm run test:watch   # Watch mode for development
 - Check redirect URI configuration
 - Ensure developer license is active
 
-**AI Workflow Issues**
-- Confirm n8n webhook URL is accessible
-- Check API key permissions
-- Verify workflow is properly configured
+**AI Integration Issues**
+- Verify OpenAI API key is valid
+- Check API usage limits
+- Ensure proper endpoint configuration
 
 **MCP Server Issues**
 - Ensure server is running on port 3001
@@ -491,7 +491,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Acknowledgments
 
 - DIMO Network for the blockchain infrastructure and APIs
-- n8n for the powerful workflow automation platform
 - OpenAI for the AI capabilities and language models
 - React Team for the amazing frontend framework
 - Tailwind CSS for the utility-first CSS framework
