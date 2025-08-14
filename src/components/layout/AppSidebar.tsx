@@ -1,12 +1,8 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
-  Car,
   Bot,
-  BarChart3,
-  Settings,
-  FileText,
-  Zap
+  FileText
 } from "lucide-react";
 import {
   Sidebar,
@@ -22,12 +18,8 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "My Vehicles", url: "/vehicles", icon: Car },
   { title: "AI Assistant", url: "/ai-chat", icon: Bot },
-  { title: "Insights", url: "/insights", icon: BarChart3 },
   { title: "Documents", url: "/documents", icon: FileText },
-  { title: "Charging", url: "/charging", icon: Zap },
-  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
