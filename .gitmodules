@@ -1,0 +1,3 @@
+[submodule "mcp-dimo"]
+	path = mcp-dimo
+	url = https://github.com/DIMO-Network/mcp-dimo
