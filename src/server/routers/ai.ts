@@ -1,11 +1,30 @@
 import { z } from 'zod';
 import { router, aiProcedure, publicProcedure } from '../trpc';
-import { 
-  n8nClient,
-  type VehicleGeniusRequest,
-  type VehicleGeniusResponse,
-  type ConversationMessage 
-} from '../../services/n8nClient';
+
+// Type definitions for AI responses
+interface VehicleGeniusRequest {
+  vehicleId: string;
+  query: string;
+  queryType?: string;
+  context?: any;
+}
+
+interface VehicleGeniusResponse {
+  response: {
+    text: string;
+    toolResults: any[];
+    recommendations: any[];
+    followUpSuggestions: string[];
+    confidence: number;
+  };
+  processingTime: number;
+}
+
+interface ConversationMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
 
 // Input validation schemas
 const vehicleQuestionSchema = z.object({
@@ -94,14 +113,10 @@ const dimoAttestationSchema = z.object({
 });
 
 /**
- * Enhanced AI Router with Vehicle Genius Agent Integration
+ * AI Router - Placeholder Implementation
  * 
- * This router provides access to the sophisticated n8n "Vehicle Genius Agent" 
- * workflow which has access to multiple tools:
- * - OpenAI Chat Model for intelligent analysis
- * - Fetch Telemetry from DIMO APIs  
- * - Nearby Search for services and locations
- * - HTTP Request for external API integration
+ * This router provides placeholder implementations for AI features.
+ * The n8n integration has been removed.
  */
 export const aiRouter = router({
   
@@ -156,7 +171,17 @@ export const aiRouter = router({
           context: input.context,
         };
 
-        const response = await n8nClient.askVehicleGenius(request);
+        // Placeholder implementation - n8n removed
+        const response: VehicleGeniusResponse = {
+          response: {
+            text: "AI features are currently disabled. This is a placeholder response.",
+            toolResults: [],
+            recommendations: [],
+            followUpSuggestions: [],
+            confidence: 0.5,
+          },
+          processingTime: 1000,
+        };
         
         // TODO: Store conversation in database for history
         await storeConversationHistory(input.vehicleId, {
@@ -209,7 +234,17 @@ export const aiRouter = router({
         
         query += ' Provide actionable recommendations prioritized by urgency and cost.';
 
-        const response = await n8nClient.analyzeVehicleHealth(input.vehicleId);
+        // Placeholder implementation - n8n removed
+        const response: VehicleGeniusResponse = {
+          response: {
+            text: "Vehicle health analysis is currently disabled. This is a placeholder response.",
+            toolResults: [],
+            recommendations: [],
+            followUpSuggestions: [],
+            confidence: 0.5,
+          },
+          processingTime: 1000,
+        };
         
         return {
           success: true,
@@ -249,7 +284,17 @@ export const aiRouter = router({
         
         query += ' Include cost estimates and prioritize by safety and urgency.';
 
-        const response = await n8nClient.checkMaintenanceNeeds(input.vehicleId);
+        // Placeholder implementation - n8n removed
+        const response: VehicleGeniusResponse = {
+          response: {
+            text: "Maintenance check is currently disabled. This is a placeholder response.",
+            toolResults: [],
+            recommendations: [],
+            followUpSuggestions: [],
+            confidence: 0.5,
+          },
+          processingTime: 1000,
+        };
         
         const maintenanceItems = extractMaintenanceItems(response.response.recommendations);
         const totalEstimatedCost = maintenanceItems.reduce((sum, item) => sum + (item.estimatedCost || 0), 0);
@@ -302,7 +347,17 @@ export const aiRouter = router({
         
         query += ' Provide a readiness score and specific action items if needed.';
 
-        const response = await n8nClient.assessTripReadiness(input.vehicleId, input.destination);
+        // Placeholder implementation - n8n removed
+        const response: VehicleGeniusResponse = {
+          response: {
+            text: "Trip readiness assessment is currently disabled. This is a placeholder response.",
+            toolResults: [],
+            recommendations: [],
+            followUpSuggestions: [],
+            confidence: 0.5,
+          },
+          processingTime: 1000,
+        };
         
         const readinessScore = calculateTripReadiness(response.response.toolResults, response.response.recommendations);
         const actionItems = response.response.recommendations.filter(r => r.actionable);
@@ -354,11 +409,17 @@ export const aiRouter = router({
         
         query += ` Limit results to ${input.maxResults} best options, prioritized by rating and distance.`;
 
-        const response = await n8nClient.findNearbyServices(
-          input.vehicleId, 
-          serviceDescription,
-          input.location
-        );
+        // Placeholder implementation - n8n removed
+        const response: VehicleGeniusResponse = {
+          response: {
+            text: "Nearby services search is currently disabled. This is a placeholder response.",
+            toolResults: [],
+            recommendations: [],
+            followUpSuggestions: [],
+            confidence: 0.5,
+          },
+          processingTime: 1000,
+        };
         
         const services = extractNearbyServices(response.response.toolResults);
         
@@ -409,7 +470,17 @@ export const aiRouter = router({
           },
         };
 
-        const response = await n8nClient.askVehicleGenius(request);
+        // Placeholder implementation - n8n removed
+        const response: VehicleGeniusResponse = {
+          response: {
+            text: "AI conversation is currently disabled. This is a placeholder response.",
+            toolResults: [],
+            recommendations: [],
+            followUpSuggestions: [],
+            confidence: 0.5,
+          },
+          processingTime: 1000,
+        };
         
         // Update conversation history
         const updatedMessages = [
@@ -447,7 +518,12 @@ export const aiRouter = router({
   getSystemStatus: publicProcedure
     .query(async ({ ctx }) => {
       try {
-        const healthCheck = await n8nClient.healthCheck();
+        // Placeholder implementation - n8n removed
+        const healthCheck = {
+          available: false,
+          latency: 0,
+          error: "n8n integration removed"
+        };
         
         return {
           available: healthCheck.available,

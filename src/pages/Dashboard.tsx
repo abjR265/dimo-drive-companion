@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -76,6 +77,7 @@ const convertDbVehicleToDimoVehicle = (dbVehicle: any): DimoVehicle => {
 };
 
 export default function Dashboard() {
+  const location = useLocation();
   const [vehicles, setVehicles] = useState<DimoVehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -218,6 +220,13 @@ export default function Dashboard() {
     loadVehicles();
   }, []);
 
+  // Set active tab based on route
+  useEffect(() => {
+    if (location.pathname === '/documents') {
+      setActiveTab('documents');
+    }
+  }, [location.pathname]);
+
   // Refresh vehicles data
   const handleRefresh = () => {
     loadVehicles();
@@ -287,11 +296,16 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Vehicle Dashboard</h1>
+          <h1 className="text-3xl font-bold text-foreground">
+            {activeTab === 'documents' ? 'Document Upload' : 'Vehicle Dashboard'}
+          </h1>
           <p className="text-muted-foreground">
-            {authData ? 'Connected to DIMO' : 'Demo Mode - Sign in to see your real vehicles'}
+            {activeTab === 'documents' 
+              ? 'Upload vehicle documents for AI-powered analysis and insights'
+              : (authData ? 'Connected to DIMO' : 'Demo Mode - Sign in to see your real vehicles')
+            }
           </p>
-          {authData && (
+          {authData && activeTab !== 'documents' && (
             <p className="text-sm text-muted-foreground">
               Token ID: {authData.tokenId} • Vehicles: {vehicles.length}
             </p>
@@ -353,19 +367,6 @@ export default function Dashboard() {
       {/* Content based on active tab */}
       {activeTab === 'vehicles' && (
         <>
-          {/* AI Status Banner */}
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <div className="flex-1">
-                <h3 className="font-medium">AI Vehicle Genius Available</h3>
-                <p className="text-sm text-muted-foreground">
-                  Click AI action buttons on any vehicle card to get intelligent insights, maintenance recommendations, and trip readiness assessments.
-                </p>
-              </div>
-            </div>
-          </div>
-
           {/* Vehicle Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {vehicles.map((vehicle) => (

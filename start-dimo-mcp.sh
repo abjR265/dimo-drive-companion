@@ -23,7 +23,7 @@ if [ -n "$NGROK_URL" ]; then
     echo "✅ DIMO MCP Server is running!"
     echo "🌐 ngrok URL: $NGROK_URL"
     echo ""
-    echo "📋 Copy this URL to update your n8n nodes:"
+    echo "📋 MCP Server URL for external integrations:"
     echo "$NGROK_URL"
     echo ""
     echo "📊 Health check: $NGROK_URL/health"

@@ -166,7 +166,6 @@ dimo-ai-web/
 │   │   └── NotFound.tsx     # 404 page
 │   ├── services/
 │   │   ├── aiService.ts     # AI analysis service
-│   │   ├── n8nClient.ts     # AI workflow integration
 │   │   ├── dimoMcpClient.ts # MCP server client
 │   │   ├── mcpDocumentProcessor.ts # Document processing
 │   │   ├── documentProcessor.ts # Advanced document processing

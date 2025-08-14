@@ -32,13 +32,7 @@ VITE_DIMO_API_KEY=your_dimo_api_key_here
 VITE_DIMO_DOMAIN=your_dimo_domain.com
 VITE_DIMO_PRIVATE_KEY=your_dimo_private_key_here
 
-# =============================================================================
-# n8n AI WORKFLOW
-# =============================================================================
-# Get these from your n8n Cloud account
-VITE_N8N_WEBHOOK_URL=https://your-n8n-workflow.webhook.url
-VITE_N8N_API_KEY=your_n8n_api_key_here
-VITE_N8N_BASE_URL=https://app.n8n.cloud
+
 
 # =============================================================================
 # OPENAI INTEGRATION
@@ -81,7 +75,7 @@ echo "   1. Edit .env file and replace placeholder values with your actual crede
 echo "   2. Get DIMO credentials from https://console.dimo.org/"
 echo "   3. Get OpenAI API key from https://platform.openai.com/"
 echo "   4. Get OCR API key from https://ocr.space/ocrapi"
-echo "   5. Set up n8n workflow and get webhook URL"
+
 echo ""
 
 echo "🔒 Security Reminders:"
