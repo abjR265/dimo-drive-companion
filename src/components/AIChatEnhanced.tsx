@@ -45,7 +45,8 @@ interface Conversation {
 // Direct MCP server communication
 const callMcpServer = async (endpoint: string, data: any) => {
   try {
-    const response = await fetch(`http://localhost:3001/mcp/tools/${endpoint}`, {
+    const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
+    const response = await fetch(`${mcpServerUrl}/mcp/tools/${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -489,7 +490,8 @@ export const AIChatEnhanced: React.FC = () => {
     const loadInitialData = async () => {
       try {
         // Check MCP server health
-        const healthResponse = await fetch('http://localhost:3001/health');
+        const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
+        const healthResponse = await fetch(`${mcpServerUrl}/health`);
         if (healthResponse.ok) {
           const healthData = await healthResponse.json();
           setMcpHealth(healthData.status === 'healthy');

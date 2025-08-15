@@ -27,7 +27,8 @@ export function McpTest() {
   const testMcpEndpoint = async (endpoint: string, params: any) => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/mcp/tools/${endpoint}`, {
+      const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
+      const response = await fetch(`${mcpServerUrl}/mcp/tools/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,7 +56,8 @@ export function McpTest() {
   const testHealth = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:3001/health');
+      const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
+      const response = await fetch(`${mcpServerUrl}/health`);
       const result = await response.json();
       setResults(prev => [...prev, {
         success: true,
@@ -261,7 +263,8 @@ export function McpTest() {
               onClick={async () => {
                 setLoading(true);
                 try {
-                  const response = await fetch(`http://localhost:3001/refresh-jwt/${tokenId}`, {
+                  const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
+                  const response = await fetch(`${mcpServerUrl}/refresh-jwt/${tokenId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ privileges: [1, 2, 3, 4, 5] })
