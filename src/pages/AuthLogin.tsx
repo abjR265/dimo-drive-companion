@@ -89,7 +89,9 @@ export default function AuthLogin() {
         <div className="space-y-8">
           <div className="text-center lg:text-left">
             <div className="flex items-center gap-2 mb-4 justify-center lg:justify-start">
-              <img src="/src/assets/dimo-logo.png" alt="DIMO" className="w-10 h-10" />
+              <div className="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                <span className="text-lg font-bold text-white">D</span>
+              </div>
               <span className="text-2xl font-bold text-foreground">DIMO AI</span>
             </div>
             <h1 className="text-4xl font-bold text-foreground mb-4">

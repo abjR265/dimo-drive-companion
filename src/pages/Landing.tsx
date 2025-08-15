@@ -52,7 +52,9 @@ export default function Landing() {
       <nav className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/src/assets/dimo-logo.png" alt="DIMO" className="w-8 h-8" />
+            <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center">
+              <span className="text-sm font-bold text-white">D</span>
+            </div>
             <span className="text-xl font-bold text-foreground">DIMO AI</span>
           </div>
           <div className="flex items-center gap-4">

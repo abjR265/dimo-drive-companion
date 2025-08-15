@@ -9,7 +9,9 @@ export function AppHeader() {
       <div className="flex items-center gap-4">
         <SidebarTrigger className="h-8 w-8" />
         <div className="flex items-center gap-2">
-          <img src="/src/assets/dimo-logo.png" alt="DIMO" className="w-8 h-8" />
+          <div className="w-8 h-8 bg-red-600 rounded-md flex items-center justify-center">
+            <span className="text-sm font-bold text-white">D</span>
+          </div>
           <span className="font-semibold text-foreground">DIMO AI</span>
         </div>
       </div>
