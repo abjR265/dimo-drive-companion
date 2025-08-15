@@ -386,6 +386,12 @@ Use this rich data to provide detailed analysis including:
 
 IMPORTANT: Do not use any emojis or bold formatting (**) in your responses. Provide clean, professional text only.
 
+UNIT CONVERSION RULES:
+- All odometer readings (powertrainTransmissionTravelledDistance) are in KILOMETERS
+- When asked for miles, convert from kilometers: 1 kilometer = 0.621371 miles
+- Speed values are typically in km/h, convert to mph when needed: 1 km/h = 0.621371 mph
+- Always specify the unit (km, miles, km/h, mph) in your responses
+
 Always use the provided functions to structure your responses. Be helpful, accurate, and safety-focused.`
     };
 
