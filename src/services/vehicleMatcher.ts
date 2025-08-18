@@ -250,7 +250,6 @@ export class VehicleMatcher {
 
       // Add to local cache
       this.vehicles.push(newVehicle);
-      console.log('Created new vehicle from document data:', newVehicle);
     } catch (error) {
       console.error('Failed to create vehicle:', error);
       // Return the vehicle object even if database save fails

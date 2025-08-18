@@ -28,6 +28,7 @@ import {
 import { trpc } from "@/lib/trpc";
 import { toast } from "@/hooks/use-toast";
 import { db } from "@/lib/supabase";
+
 // Mock vehicle data interface
 interface DimoVehicle {
   id: string;
@@ -88,6 +89,369 @@ export default function Dashboard() {
   // AI System Status Query - will be enabled once tRPC server is set up
   // const { data: aiStatus } = trpc.ai.getSystemStatus.useQuery();
 
+  // Normalize a vehicle object coming from ShareVehiclesWithDimo
+  const convertSharedToVehicle = (shared: any): DimoVehicle => {
+    console.log(`Converting vehicle: ${shared.definition?.make} ${shared.definition?.model} (${shared.definition?.year})`);
+    
+    // Extract vehicle data from DIMO Identity API response structure
+    const tokenId = shared?.tokenId || shared?.id || Math.floor(Math.random()*10000);
+    
+    // Extract make, model, year from definition
+    let make = 'Vehicle';
+    let model = '—';
+    let year = new Date().getFullYear();
+    
+    if (shared?.definition) {
+      make = shared.definition.make || 'Vehicle';
+      model = shared.definition.model || '—';
+      year = Number(shared.definition.year) || new Date().getFullYear();
+    } else if (shared?.make) {
+      // Fallback to direct properties
+      make = shared.make;
+      model = shared.model || '—';
+      year = Number(shared.year) || new Date().getFullYear();
+    } else if (shared?.name) {
+      // Try to parse name like "Toyota Tacoma (2016)"
+      const nameMatch = shared.name.match(/^(.+?)\s+(.+?)\s*\((\d{4})\)$/);
+      if (nameMatch) {
+        make = nameMatch[1].trim();
+        model = nameMatch[2].trim();
+        year = Number(nameMatch[3]);
+      } else {
+        // Fallback: split by space and assume last part is model
+        const parts = shared.name.split(' ');
+        if (parts.length >= 2) {
+          make = parts[0];
+          model = parts.slice(1).join(' ');
+        }
+      }
+    }
+    
+    // Determine vehicle type based on make/model
+    let vehicleType: 'electric' | 'hybrid' | 'gas' = 'gas';
+    if (make.toLowerCase().includes('tesla') || 
+        model.toLowerCase().includes('model') ||
+        model.toLowerCase().includes('ev') ||
+        model.toLowerCase().includes('electric')) {
+      vehicleType = 'electric';
+    } else if (model.toLowerCase().includes('hybrid') ||
+               model.toLowerCase().includes('hev') ||
+               model.toLowerCase().includes('phev')) {
+      vehicleType = 'hybrid';
+    }
+    
+    // Check if vehicle has SACDs (is shared with our app)
+    const hasSacds = shared?.sacds && Array.isArray(shared.sacds) && shared.sacds.length > 0;
+    
+    const vehicle: DimoVehicle = {
+      id: `vehicle-${tokenId}`, // Ensure unique ID with prefix
+      name: `${make} ${model}`.trim(),
+      model: String(model),
+      year,
+      type: vehicleType,
+      healthScore: 85, // Default - could be fetched from DIMO API later
+      status: 'optimal' as const,
+      fuelLevel: vehicleType === 'electric' ? undefined : 0.6, // No fuel for electric
+      batteryLevel: vehicleType === 'electric' ? 0.8 : undefined, // Battery for electric
+      mileage: 45000, // Default - could be fetched from DIMO API later
+      lastService: '2024-01-10', // Default - could be fetched from DIMO API later
+      aiInsight: `Your ${make} ${model} is connected via DIMO. Token ID: ${tokenId}. ${hasSacds ? 'Vehicle is shared with this app.' : 'Vehicle is not shared.'}`,
+      tokenId: Number(tokenId),
+      location: { latitude: 37.7749, longitude: -122.4194 }, // Default - could be fetched from DIMO API later
+    };
+    
+    console.log(`✓ Vehicle converted: ${vehicle.name}`);
+    return vehicle;
+  };
+
+  // Function to get vehicle-specific JWT through direct token exchange with Developer JWT
+  const getVehicleJWT = async (tokenId: number): Promise<string | null> => {
+    try {
+      console.log(`Getting vehicle JWT for vehicle ${tokenId} via direct token exchange...`);
+      
+      // Get the Developer JWT from environment variable or localStorage
+      const developerJwt = import.meta.env.VITE_DIMO_DEVELOPER_JWT || localStorage.getItem('dimoDeveloperJwt');
+      
+      if (!developerJwt) {
+        console.error('No Developer JWT found. Please set VITE_DIMO_DEVELOPER_JWT or store in localStorage as dimoDeveloperJwt');
+        return null;
+      }
+
+      // Make direct token exchange request to get vehicle-specific JWT
+      const response = await fetch('https://token-exchange-api.dimo.zone/v1/tokens/exchange', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${developerJwt}`
+        },
+        body: JSON.stringify({
+          nftContractAddress: '0xbA5738a18d83D41847dfFbDC6101d37C69c9B0cF', // Production contract address
+          tokenId: tokenId,
+          privileges: [1] // All-time, non-location data
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Token exchange failed for vehicle ${tokenId}:`, errorText);
+        return null;
+      }
+
+      const data = await response.json();
+      console.log(`✓ Vehicle ${tokenId} token exchange successful`);
+      
+      return data.token; // Return the vehicle-specific JWT
+    } catch (error) {
+      console.error(`Error in token exchange for vehicle ${tokenId}:`, error);
+      return null;
+    }
+  };
+
+  // Function to fetch vehicle telemetry data directly from DIMO Telemetry API
+  const fetchVehicleTelemetry = async (tokenId: number): Promise<any> => {
+    console.log(`Fetching telemetry for vehicle ${tokenId}...`);
+    
+    try {
+      // Get vehicle-specific JWT through MCP server
+      const vehicleJwt = await getVehicleJWT(tokenId);
+      
+      if (!vehicleJwt) {
+        console.error(`Failed to get vehicle JWT for ${tokenId}`);
+        return null;
+      }
+
+      // Make direct call to DIMO Telemetry API with vehicle JWT
+      const response = await fetch('https://telemetry-api.dimo.zone/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${vehicleJwt}`
+        },
+        body: JSON.stringify({
+          query: `query GetLatestSignals($tokenId: Int!) {
+            signalsLatest(tokenId: $tokenId) {
+              # Vehicle Info & Status
+              powertrainTransmissionTravelledDistance {
+                value
+                timestamp
+              }
+              speed {
+                value
+                timestamp
+              }
+              isIgnitionOn {
+                value
+                timestamp
+              }
+              lastSeen
+              
+              # Fuel System
+              powertrainFuelSystemRelativeLevel {
+                value
+                timestamp
+              }
+              powertrainFuelSystemAbsoluteLevel {
+                value
+                timestamp
+              }
+              powertrainFuelSystemSupportedFuelTypes {
+                value
+                timestamp
+              }
+              
+              # Battery & Charging
+              powertrainTractionBatteryStateOfChargeCurrent {
+                value
+                timestamp
+              }
+              powertrainTractionBatteryStateOfChargeCurrentEnergy {
+                value
+                timestamp
+              }
+              powertrainTractionBatteryGrossCapacity {
+                value
+                timestamp
+              }
+              powertrainTractionBatteryChargingIsCharging {
+                value
+                timestamp
+              }
+              lowVoltageBatteryCurrentVoltage {
+                value
+                timestamp
+              }
+              
+              # Engine
+              powertrainType {
+                value
+                timestamp
+              }
+              powertrainRange {
+                value
+                timestamp
+              }
+              powertrainCombustionEngineSpeed {
+                value
+                timestamp
+              }
+              powertrainCombustionEngineECT {
+                value
+                timestamp
+              }
+              powertrainCombustionEngineTPS {
+                value
+                timestamp
+              }
+              
+              # Diagnostics
+              obdEngineLoad {
+                value
+                timestamp
+              }
+              obdIntakeTemp {
+                value
+                timestamp
+              }
+              obdBarometricPressure {
+                value
+                timestamp
+              }
+              obdRunTime {
+                value
+                timestamp
+              }
+              obdDTCList {
+                value
+                timestamp
+              }
+              
+              # Environment
+              exteriorAirTemperature {
+                value
+                timestamp
+              }
+            }
+          }`,
+          variables: {
+            tokenId: tokenId
+          }
+        })
+      });
+
+      console.log(`Telemetry API response: ${response.status} for vehicle ${tokenId}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Telemetry API error for vehicle ${tokenId}: ${response.status}`);
+        throw new Error(`Telemetry API error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log(`✓ Telemetry data received for vehicle ${tokenId}`);
+      
+      // Extract the telemetry data from the DIMO API response
+      return data.data?.signalsLatest || null;
+    } catch (error) {
+      console.error(`Error fetching telemetry from DIMO Telemetry API for vehicle ${tokenId}:`, error);
+      return null;
+    }
+  };
+
+  // Calculate health score based on telemetry data
+  const calculateHealthScore = (telemetry: any): number => {
+    if (!telemetry) return 85; // Default health score
+    
+    let score = 85; // Base score
+    let factors = 0;
+    
+    // Check battery voltage (for all vehicles)
+    if (telemetry.lowVoltageBatteryCurrentVoltage?.value) {
+      const voltage = telemetry.lowVoltageBatteryCurrentVoltage.value;
+      if (voltage >= 12.5) score += 5;
+      else if (voltage >= 12.0) score += 0;
+      else score -= 10;
+      factors++;
+    }
+    
+    // Check engine coolant temperature (for gas vehicles)
+    if (telemetry.powertrainCombustionEngineECT?.value) {
+      const temp = telemetry.powertrainCombustionEngineECT.value;
+      if (temp >= 80 && temp <= 110) score += 5;
+      else if (temp > 110) score -= 10;
+      else if (temp < 80) score -= 5;
+      factors++;
+    }
+    
+    // Check engine RPM (for gas vehicles)
+    if (telemetry.powertrainCombustionEngineSpeed?.value) {
+      const rpm = telemetry.powertrainCombustionEngineSpeed.value;
+      if (rpm > 0 && rpm < 3000) score += 5;
+      else if (rpm >= 3000) score -= 5;
+      factors++;
+    }
+    
+    // Check engine load
+    if (telemetry.obdEngineLoad?.value) {
+      const load = telemetry.obdEngineLoad.value;
+      if (load >= 0 && load <= 80) score += 3;
+      else if (load > 80) score -= 5;
+      factors++;
+    }
+    
+    // Check intake temperature
+    if (telemetry.obdIntakeTemp?.value) {
+      const temp = telemetry.obdIntakeTemp.value;
+      if (temp >= 10 && temp <= 50) score += 2;
+      else if (temp < 0 || temp > 60) score -= 5;
+      factors++;
+    }
+    
+    // Check barometric pressure
+    if (telemetry.obdBarometricPressure?.value) {
+      const pressure = telemetry.obdBarometricPressure.value;
+      if (pressure >= 90 && pressure <= 110) score += 2;
+      else if (pressure < 80 || pressure > 120) score -= 3;
+      factors++;
+    }
+    
+    // Normalize score if we have factors
+    if (factors > 0) {
+      score = Math.max(0, Math.min(100, score));
+    }
+    
+    return Math.round(score);
+  };
+
+  // Get fuel or battery level from telemetry
+  const getFuelBatteryLevel = (telemetry: any, vehicleType: string): number => {
+    if (!telemetry) return 60; // Default level
+    
+    if (vehicleType === 'electric') {
+      // For electric vehicles, use battery state of charge (already in percentage)
+      const batteryLevel = telemetry.powertrainTractionBatteryStateOfChargeCurrent?.value;
+      if (batteryLevel !== undefined && batteryLevel !== null) {
+        return Math.round(batteryLevel); // Ensure it's a proper percentage
+      }
+      return 60; // Default
+    } else {
+      // For gas vehicles, use fuel system relative level (already in percentage)
+      const fuelLevel = telemetry.powertrainFuelSystemRelativeLevel?.value;
+      if (fuelLevel !== undefined && fuelLevel !== null) {
+        return Math.round(fuelLevel); // Ensure it's a proper percentage
+      }
+      return 60; // Default
+    }
+  };
+
+  // Get mileage from telemetry
+  const getMileage = (telemetry: any): number => {
+    const odometerKm = telemetry?.powertrainTransmissionTravelledDistance?.value;
+    if (odometerKm && odometerKm > 0) {
+      return Math.round(odometerKm); // Return in km, no conversion to miles
+    }
+    return 0;
+  };
+
   // Load vehicles for authenticated user
   const loadVehicles = async () => {
     try {
@@ -96,43 +460,146 @@ export default function Dashboard() {
 
       // Get auth data from localStorage
       const storedAuth = localStorage.getItem('dimoAuth');
+      console.log('=== LOADING VEHICLES ===');
+      
       let userAuthData: UserAuthData | null = null;
 
       if (storedAuth) {
         const parsedAuth = JSON.parse(storedAuth);
+        console.log('Auth data loaded successfully');
         setAuthData(parsedAuth);
+
+        // Check for vehicles in various possible locations
+        const sharedVehicles = parsedAuth.sharedVehicles || [];
+        const vehicles = parsedAuth.vehicles || [];
+        const allVehicles = [...sharedVehicles, ...vehicles];
+        
+        // Remove duplicates from allVehicles based on tokenId
+        const uniqueAllVehicles = allVehicles.filter((vehicle, index, self) => 
+          index === self.findIndex(v => (v.tokenId || v.id) === (vehicle.tokenId || vehicle.id))
+        );
+        
+        console.log(`Found ${sharedVehicles.length} shared vehicles, ${vehicles.length} vehicles`);
+        
+        if (Array.isArray(uniqueAllVehicles) && uniqueAllVehicles.length > 0) {
+          console.log(`Processing ${uniqueAllVehicles.length} vehicles...`);
+          
+          // Convert vehicles and fetch telemetry for each
+          const vehiclesWithTelemetry = await Promise.all(
+            uniqueAllVehicles.map(async (vehicle) => {
+              const convertedVehicle = convertSharedToVehicle(vehicle);
+              
+              // Fetch telemetry data for this vehicle
+              const telemetry = await fetchVehicleTelemetry(convertedVehicle.tokenId);
+              
+              // Update vehicle with real data
+              const healthScore = calculateHealthScore(telemetry);
+              const fuelBatteryLevel = getFuelBatteryLevel(telemetry, convertedVehicle.type);
+              const odometer = getMileage(telemetry);
+              
+              return {
+                ...convertedVehicle,
+                healthScore,
+                fuelLevel: fuelBatteryLevel,
+                batteryLevel: fuelBatteryLevel, // For electric vehicles
+                odometer,
+                telemetry // Add telemetry data to the vehicle object
+              };
+            })
+          );
+          
+          console.log(`Loaded ${vehiclesWithTelemetry.length} vehicles with telemetry`);
+          
+          // Remove duplicates based on tokenId
+          const uniqueVehiclesWithTelemetry = vehiclesWithTelemetry.filter((vehicle, index, self) => 
+            index === self.findIndex(v => v.tokenId === vehicle.tokenId)
+          );
+          
+          console.log(`Displaying ${uniqueVehiclesWithTelemetry.length} unique vehicles`);
+          setVehicles(uniqueVehiclesWithTelemetry);
+          return; // Done – show connected/shared vehicles with real data
+        } else {
+          console.log('No vehicles in auth data, fetching from DIMO API...');
+          
+          // Try to fetch vehicles from DIMO Identity API directly
+          if (parsedAuth.jwt && parsedAuth.walletAddress) {
+            try {
+              console.log('Fetching vehicles from DIMO Identity API...');
+              const fetchedVehicles = await fetchVehiclesFromDimoAPI(parsedAuth.jwt, parsedAuth.walletAddress);
+              if (fetchedVehicles.length > 0) {
+                console.log(`Fetched ${fetchedVehicles.length} vehicles from DIMO API`);
+                
+                // Convert vehicles and fetch telemetry for each
+                const vehiclesWithTelemetry = await Promise.all(
+                  fetchedVehicles.map(async (vehicle) => {
+                    const convertedVehicle = convertSharedToVehicle(vehicle);
+                    
+                    // Fetch telemetry data for this vehicle
+                    const telemetry = await fetchVehicleTelemetry(convertedVehicle.tokenId);
+                    
+                    // Update vehicle with real data
+                                    const healthScore = calculateHealthScore(telemetry);
+                const fuelBatteryLevel = getFuelBatteryLevel(telemetry, convertedVehicle.type);
+                const odometer = getMileage(telemetry);
+                
+                return {
+                  ...convertedVehicle,
+                  healthScore,
+                  fuelLevel: fuelBatteryLevel,
+                  batteryLevel: fuelBatteryLevel, // For electric vehicles
+                  odometer,
+                  telemetry
+                };
+                  })
+                );
+                
+                // Remove duplicates based on tokenId
+                const uniqueVehicles = vehiclesWithTelemetry.filter((vehicle, index, self) => 
+                  index === self.findIndex(v => v.tokenId === vehicle.tokenId)
+                );
+                
+                console.log(`✓ Dashboard loaded: ${uniqueVehicles.length} vehicles`);
+                setVehicles(uniqueVehicles);
+                
+                // Update localStorage with the fetched vehicles
+                const updatedAuth = {
+                  ...parsedAuth,
+                  vehicles: fetchedVehicles,
+                  sharedVehicles: fetchedVehicles
+                };
+                localStorage.setItem('dimoAuth', JSON.stringify(updatedAuth));
+                return;
+              }
+            } catch (apiError) {
+              console.error('Failed to fetch vehicles from DIMO API:', apiError);
+            }
+          }
+        }
         
         userAuthData = {
-          tokenId: parsedAuth.tokenId || 8,
+          tokenId: parsedAuth.tokenId || (parsedAuth.vehicles?.[0]?.tokenId) || (parsedAuth.sharedVehicles?.[0]?.tokenId),
           vehicleId: parsedAuth.vehicles?.[0]?.id || '',
           permissions: parsedAuth.permissions || [],
           jwt: parsedAuth.jwt,
           walletAddress: parsedAuth.walletAddress // Add wallet address from stored auth data
         };
+      } else {
+        console.log('No stored auth data found');
       }
 
-      // Try to load vehicles from database for authenticated user
+      // Try to load vehicles from database for authenticated user (fallback if share list absent)
       if (userAuthData && userAuthData.walletAddress) {
         try {
-          // Loading vehicles for user (wallet address sanitized)
-          
           // First, get the user from the database
           const user = await db.getUserByWallet(userAuthData.walletAddress);
-          // User retrieved from database
           
           if (user) {
-            console.log('✅ Found user in database');
-            
             // Load vehicles for this user
             const dbVehicles = await db.getVehiclesByUserId(user.id);
-            console.log('🚗 Loaded vehicles from database:', dbVehicles.length);
-            
-            // Convert to DimoVehicle format
             const vehicleData = dbVehicles.map(convertDbVehicleToDimoVehicle);
             setVehicles(vehicleData);
           } else {
-            console.log('❌ User not found in database, using fallback');
-            // Create a fallback vehicle for document upload
+            // Fallback single demo vehicle
             const fallbackVehicle: DimoVehicle = {
               id: '550e8400-e29b-41d4-a716-446655440000',
               name: 'Demo Vehicle',
@@ -145,7 +612,7 @@ export default function Dashboard() {
               mileage: 45000,
               lastService: '2024-01-10',
               aiInsight: 'Demo vehicle for testing document upload.',
-              tokenId: userAuthData.tokenId,
+              tokenId: userAuthData.tokenId || 999999, // Use actual token ID or a clearly fake one
               location: { latitude: 37.7749, longitude: -122.4194 },
             };
             setVehicles([fallbackVehicle]);
@@ -165,7 +632,7 @@ export default function Dashboard() {
             mileage: 45000,
             lastService: '2024-01-10',
             aiInsight: 'Demo vehicle for testing document upload.',
-            tokenId: userAuthData.tokenId || 8,
+            tokenId: userAuthData.tokenId || 999999, // Use actual token ID or a clearly fake one
             location: { latitude: 37.7749, longitude: -122.4194 },
           };
           setVehicles([fallbackVehicle]);
@@ -185,7 +652,7 @@ export default function Dashboard() {
           mileage: 45000,
           lastService: '2024-01-10',
           aiInsight: 'Demo vehicle for testing document upload.',
-          tokenId: 8,
+          tokenId: 999999, // Clearly fake token ID for demo
           location: { latitude: 37.7749, longitude: -122.4194 },
         };
         setVehicles([fallbackVehicle]);
@@ -206,12 +673,59 @@ export default function Dashboard() {
         mileage: 45000,
         lastService: '2024-01-10',
         aiInsight: 'Demo vehicle for testing document upload.',
-        tokenId: 8,
+        tokenId: 999999, // Clearly fake token ID for demo
         location: { latitude: 37.7749, longitude: -122.4194 },
       };
       setVehicles([fallbackVehicle]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Function to fetch vehicles from DIMO Identity API
+  const fetchVehiclesFromDimoAPI = async (jwt: string, walletAddress: string): Promise<any[]> => {
+    try {
+      console.log('Fetching vehicles from DIMO Identity API...');
+      
+      const response = await fetch('https://identity-api.dimo.zone/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`
+        },
+        body: JSON.stringify({
+          query: `query GetVehiclesByOwner($owner: Address!) {
+            vehicles(filterBy: {owner: $owner}, first: 100) {
+              nodes {
+                tokenId
+                tokenDID
+                definition {
+                  make
+                  model
+                  year
+                }
+              }
+            }
+          }`,
+          variables: {
+            owner: walletAddress
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('DIMO Identity API error:', errorText);
+        return [];
+      }
+
+      const data = await response.json();
+      console.log('DIMO Identity API response:', data);
+      
+      return data.data?.vehicles?.nodes || [];
+    } catch (error) {
+      console.error('Error fetching vehicles from DIMO Identity API:', error);
+      return [];
     }
   };
 
@@ -307,7 +821,7 @@ export default function Dashboard() {
           </p>
           {authData && activeTab !== 'documents' && (
             <p className="text-sm text-muted-foreground">
-              Token ID: {authData.tokenId} • Vehicles: {vehicles.length}
+              Vehicles: {vehicles.length}
             </p>
           )}
         </div>
@@ -451,14 +965,6 @@ export default function Dashboard() {
               )}
             </div>
           )}
-
-          {/* Add Vehicle Button */}
-          <div className="flex justify-center">
-            <Button variant="outline" size="lg">
-              <Plus className="h-5 w-5 mr-2" />
-              Add Vehicle
-            </Button>
-          </div>
         </>
       )}
 
@@ -476,7 +982,7 @@ export default function Dashboard() {
           
           <DocumentUpload 
             vehicleId={vehicles[0]?.id || '550e8400-e29b-41d4-a716-446655440000'} 
-            tokenId={authData?.tokenId || 8}
+            tokenId={vehicles[0]?.tokenId || authData?.tokenId || 999999}
             onDocumentProcessed={handleDocumentProcessed}
           />
         </div>

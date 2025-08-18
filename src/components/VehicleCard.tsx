@@ -14,7 +14,9 @@ import {
   CheckCircle,
   Brain,
   Clock,
-  Sparkles
+  Sparkles,
+  FileText,
+  Plus
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { toast } from "@/hooks/use-toast";
@@ -29,13 +31,26 @@ interface DimoVehicle {
   status: 'optimal' | 'attention' | 'service';
   batteryLevel?: number;
   fuelLevel?: number;
-  mileage: number;
+  odometer: number;
   lastService: string;
   aiInsight: string;
   tokenId?: number;
   location?: {
     latitude: number;
     longitude: number;
+  };
+  telemetry?: {
+    powertrainCombustionEngineSpeed?: { value: number };
+    powertrainCombustionEngineECT?: { value: number };
+    obdEngineLoad?: { value: number };
+    powertrainCombustionEngineTPS?: { value: number };
+    obdIntakeTemp?: { value: number };
+    obdBarometricPressure?: { value: number };
+    obdRunTime?: { value: number };
+    obdDTCList?: { value: string };
+    exteriorAirTemperature?: { value: number };
+    isIgnitionOn?: { value: boolean };
+    speed?: { value: number };
   };
 }
 
@@ -71,6 +86,21 @@ export function VehicleCard({ vehicle, onAIAnalysisComplete, showFullFeatures = 
     if (score >= 80) return "text-green-500";
     if (score >= 60) return "text-yellow-500";
     return "text-red-500";
+  };
+
+  // Format engine runtime from seconds to HH:MM:SS
+  const formatEngineRuntime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${remainingSeconds}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
   };
 
 
@@ -119,8 +149,8 @@ export function VehicleCard({ vehicle, onAIAnalysisComplete, showFullFeatures = 
                 <Battery className="h-4 w-4 text-green-500" />
                 <span className="text-xs text-muted-foreground">Battery</span>
               </div>
-              <Progress value={vehicle.batteryLevel * 100} className="h-2" />
-              <span className="text-xs">{Math.round(vehicle.batteryLevel * 100)}%</span>
+              <Progress value={vehicle.batteryLevel} className="h-2" />
+              <span className="text-xs">{Math.round(vehicle.batteryLevel)}%</span>
             </div>
           )}
           
@@ -130,38 +160,127 @@ export function VehicleCard({ vehicle, onAIAnalysisComplete, showFullFeatures = 
                 <Fuel className="h-4 w-4 text-blue-500" />
                 <span className="text-xs text-muted-foreground">Fuel</span>
               </div>
-              <Progress value={vehicle.fuelLevel * 100} className="h-2" />
-              <span className="text-xs">{Math.round(vehicle.fuelLevel * 100)}%</span>
+              <Progress value={vehicle.fuelLevel} className="h-2" />
+              <span className="text-xs">{Math.round(vehicle.fuelLevel)}%</span>
             </div>
           )}
 
           <div className="space-y-1">
             <div className="flex items-center gap-1">
               <Route className="h-4 w-4 text-gray-500" />
-              <span className="text-xs text-muted-foreground">Mileage</span>
+              <span className="text-xs text-muted-foreground">Odometer</span>
             </div>
-            <span className="text-sm font-medium">{vehicle.mileage.toLocaleString()} mi</span>
+            <span className="text-sm font-medium">{vehicle.odometer.toLocaleString()} km</span>
           </div>
         </div>
 
-        {/* AI Insight */}
-        <div className="bg-muted/50 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Brain className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">AI Insight</span>
-            {lastAIInsight && (
-              <Badge variant="outline" className="text-xs">
-                <Clock className="h-3 w-3 mr-1" />
-                Updated
-              </Badge>
-            )}
+        {/* Diagnostic & Engine Details */}
+        {vehicle.telemetry && (
+          <div className="bg-muted/30 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-3">
+              <Wrench className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-medium">Diagnostic & Engine</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              {/* Engine RPM */}
+              {vehicle.telemetry.powertrainCombustionEngineSpeed?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Engine RPM:</span>
+                  <span className="font-medium">
+                    {Math.round(vehicle.telemetry.powertrainCombustionEngineSpeed.value)} rpm
+                  </span>
+                </div>
+              )}
+              
+              {/* Coolant Temperature */}
+              {vehicle.telemetry.powertrainCombustionEngineECT?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Coolant Temp:</span>
+                  <span className="font-medium">
+                    {Math.round(vehicle.telemetry.powertrainCombustionEngineECT.value)}°C
+                  </span>
+                </div>
+              )}
+              
+
+              
+              {/* Engine Runtime */}
+              {vehicle.telemetry.obdRunTime?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Engine Runtime:</span>
+                  <span className="font-medium">
+                    {formatEngineRuntime(vehicle.telemetry.obdRunTime.value)}
+                  </span>
+                </div>
+              )}
+              
+              {/* Intake Temperature */}
+              {vehicle.telemetry.obdIntakeTemp?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Intake Temp:</span>
+                  <span className="font-medium">
+                    {Math.round(vehicle.telemetry.obdIntakeTemp.value)}°C
+                  </span>
+                </div>
+              )}
+              
+              {/* Barometric Pressure */}
+              {vehicle.telemetry.obdBarometricPressure?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Baro Pressure:</span>
+                  <span className="font-medium">
+                    {Math.round(vehicle.telemetry.obdBarometricPressure.value)} kPa
+                  </span>
+                </div>
+              )}
+              
+              {/* Exterior Air Temperature */}
+              {vehicle.telemetry.exteriorAirTemperature?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Outside Temp:</span>
+                  <span className="font-medium">
+                    {Math.round(vehicle.telemetry.exteriorAirTemperature.value)}°C
+                  </span>
+                </div>
+              )}
+              
+              {/* Ignition Status */}
+              {vehicle.telemetry.isIgnitionOn?.value !== undefined && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ignition:</span>
+                  <span className={`font-medium ${vehicle.telemetry.isIgnitionOn.value ? 'text-green-500' : 'text-red-500'}`}>
+                    {vehicle.telemetry.isIgnitionOn.value ? 'ON' : 'OFF'}
+                  </span>
+                </div>
+              )}
+              
+              {/* Current Speed */}
+              {vehicle.telemetry.speed?.value !== undefined && vehicle.telemetry.speed.value > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Speed:</span>
+                  <span className="font-medium">
+                    {Math.round(vehicle.telemetry.speed.value)} km/h
+                  </span>
+                </div>
+              )}
+              
+
+              
+              {/* Diagnostic Trouble Codes */}
+              {vehicle.telemetry.obdDTCList?.value && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">DTC Codes:</span>
+                  <span className="font-medium text-red-500">
+                    {vehicle.telemetry.obdDTCList.value}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">{vehicle.aiInsight}</p>
-        </div>
+        )}
 
 
-
-        {/* Last AI Analysis Results */}
         {lastAIInsight && (
           <div className="bg-primary/5 rounded-lg p-3 border">
             <div className="flex items-center gap-2 mb-2">
@@ -218,11 +337,34 @@ export function VehicleCard({ vehicle, onAIAnalysisComplete, showFullFeatures = 
               </div>
             )}
           </div>
-        )}
+                )}
 
-        {/* Service Information */}
-        <div className="text-xs text-muted-foreground border-t pt-2">
-          Last Service: {vehicle.lastService}
+        {/* Document Upload Section */}
+        <div className="bg-muted/20 rounded-lg p-3 mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium">Documents</span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                // Navigate to document upload page with vehicle info
+                window.location.href = `/documents?vehicle=${encodeURIComponent(vehicle.name)}&tokenId=${vehicle.tokenId || ''}`;
+              }}
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-3 w-3" />
+              Add
+            </Button>
+          </div>
+          <div className="flex items-start gap-2">
+            <div className="w-4 flex-shrink-0"></div>
+            <p className="text-xs text-muted-foreground text-justify">
+              Upload maintenance records, service history, or other vehicle documents
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -207,7 +207,6 @@ export const db = {
       .eq('wallet_address', walletAddress)
       .maybeSingle();
 
-    console.log('🔍 Supabase response - data:', data, 'error:', error);
 
     if (error) {
       console.error('🔍 Database error:', error);

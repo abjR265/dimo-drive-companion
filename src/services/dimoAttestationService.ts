@@ -192,7 +192,6 @@ export class DimoAttestationService {
     try {
       if (DEBUG_MODE) {
         console.log('Posting attestation via CORS proxy');
-        console.log('Payload:', JSON.stringify(sanitizeForLogging(payload), null, 2));
       }
       
       // Use local proxy server to avoid CORS issues
@@ -222,7 +221,6 @@ export class DimoAttestationService {
         try {
           const result = JSON.parse(responseText);
           if (DEBUG_MODE) {
-            console.log('Attestation response:', sanitizeForLogging(result));
           }
         } catch (parseError) {
                       if (DEBUG_MODE) {

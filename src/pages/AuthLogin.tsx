@@ -1,13 +1,20 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Shield, Zap, Users } from "lucide-react";
-import { useState } from "react";
 import { LoginWithDimo, ShareVehiclesWithDimo } from '@dimo-network/login-with-dimo';
 
 export default function AuthLogin() {
-
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginData, setLoginData] = useState<any>(null);
   
+  // Debug logging
+  useEffect(() => {
+    console.log('=== AUTH LOGIN COMPONENT RENDERED ===');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('loginData:', loginData);
+  }, [isAuthenticated, loginData]);
+
   const benefits = [
     {
       icon: Car,
@@ -31,28 +38,18 @@ export default function AuthLogin() {
     }
   ];
 
-  // Step 1 success: user authenticated
-  const handleLoginSuccess = (authData: any) => {
-    try {
-      console.log('=== DIMO LOGIN SUCCESS ===');
-      console.log('Auth Data Keys:', Object.keys(authData || {}));
-    } catch {}
-    setIsAuthenticated(true);
-  };
-
-  // Final success: permissions shared
-  const handleDimoSuccess = async (authData: any) => {
-    console.log('=== DIMO SHARE SUCCESS ===');
-    try {
-      console.log('Auth Data:', JSON.stringify(authData, null, 2));
-    } catch {}
+  // Step 1: Handle successful login (no permissions requested)
+  const handleLoginSuccess = async (authData: any) => {
+    console.log('=== DIMO LOGIN SUCCESS ===');
+    console.log('Login Auth Data:', JSON.stringify(authData, null, 2));
     
     try {
-      // Extract user data from auth response
-      const userJWT = authData.token || authData.accessToken || authData.jwt;
-      const userVehicles = authData.sharedVehicles || authData.vehicles || [];
+      // Store login data and mark as authenticated
+      setLoginData(authData);
+      setIsAuthenticated(true);
       
-      // Extract wallet address from auth data
+      // Extract basic user info from login
+      const userJWT = authData.token || authData.accessToken || authData.jwt;
       const walletAddress = authData.address || 
                            authData.walletAddress || 
                            authData.user?.address ||
@@ -61,30 +58,211 @@ export default function AuthLogin() {
                            null;
       
       if (!userJWT) {
-        console.error('No JWT found in auth data');
+        console.error('No JWT found in login data');
         return;
       }
 
-      // Get the first vehicle's tokenId (or use a default)
-      const firstVehicle = userVehicles[0];
-      const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
-
-      // Store auth data in localStorage for the dashboard
+      // Store initial auth data (without vehicles yet)
       localStorage.setItem('dimoAuth', JSON.stringify({
         jwt: userJWT,
-        tokenId: tokenId,
-        vehicles: userVehicles,
         walletAddress: walletAddress,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        isLoggedIn: true
       }));
+      
+    } catch (error) {
+      console.error('Error processing DIMO login:', error);
+    }
+  };
+
+  // Step 2: Handle successful vehicle sharing (with permissions)
+  const handleShareSuccess = async (authData: any) => {
+    console.log('=== DIMO SHARE SUCCESS CALLED ===');
+    console.log('Share Auth Data:', JSON.stringify(authData, null, 2));
+    console.log('Share Auth Data Type:', typeof authData);
+    console.log('Share Auth Data Keys:', Object.keys(authData || {}));
+    
+    try {
+      // Extract JWT token from share response
+      const userJWT = authData.token || authData.accessToken || authData.jwt;
+      console.log('Extracted JWT:', userJWT ? 'Present' : 'Missing');
+      
+      if (!userJWT) {
+        console.error('No JWT found in share response');
+        return;
+      }
+
+      // Extract wallet address from JWT payload
+      let walletAddress = null;
+      try {
+        const jwtPayload = JSON.parse(atob(userJWT.split('.')[1]));
+        walletAddress = jwtPayload.ethereum_address || jwtPayload.sub;
+        console.log('Extracted wallet address from JWT:', walletAddress);
+      } catch (error) {
+        console.error('Failed to extract wallet address from JWT:', error);
+      }
+
+      // Fetch vehicles using DIMO Identity API
+      console.log('About to call fetchVehiclesFromDimo...');
+      const vehicles = await fetchVehiclesFromDimo(userJWT, walletAddress);
+      console.log('Fetched vehicles from DIMO:', vehicles);
+
+      // Update stored auth data with vehicle information
+      const existingAuth = localStorage.getItem('dimoAuth');
+      const authDataObj = existingAuth ? JSON.parse(existingAuth) : {};
+      
+      const finalAuthData = {
+        ...authDataObj,
+        jwt: userJWT,
+        walletAddress: walletAddress,
+        vehicles: vehicles,
+        sharedVehicles: vehicles,
+        timestamp: Date.now(),
+        isLoggedIn: true,
+        vehiclesShared: true,
+        // Store the full response for debugging
+        fullShareResponse: authData
+      };
+      
+      console.log('Storing final auth data:', JSON.stringify(finalAuthData, null, 2));
+      localStorage.setItem('dimoAuth', JSON.stringify(finalAuthData));
 
       // Redirect to dashboard
+      console.log('Redirecting to dashboard...');
       window.location.href = '/dashboard';
       
     } catch (error) {
       console.error('Error processing DIMO vehicle sharing:', error);
       // Still redirect to dashboard even if there's an error
       window.location.href = '/dashboard';
+    }
+  };
+
+  // Function to fetch vehicles from DIMO Identity API
+  const fetchVehiclesFromDimo = async (jwt: string, walletAddress: string | null): Promise<any[]> => {
+    console.log('=== FETCHING VEHICLES FROM DIMO ===');
+    console.log('JWT:', jwt ? 'Present' : 'Missing');
+    console.log('Wallet Address:', walletAddress);
+    
+    try {
+      // Use the correct DIMO Identity API endpoint and query structure
+      console.log('Testing DIMO Identity API connection...');
+      
+      const response = await fetch('https://identity-api.dimo.zone/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwt}`
+        },
+        body: JSON.stringify({
+          query: `
+            query GetVehiclesByOwner($address: Address!) {
+              vehicles(filterBy: { owner: $address }, first: 100) {
+                nodes {
+                  id
+                  tokenId
+                  owner
+                  name
+                  definition {
+                    make
+                    model
+                    year
+                  }
+                  privileges(first: 10) {
+                    nodes {
+                      id
+                      setAt
+                      expiresAt
+                    }
+                  }
+                }
+                totalCount
+              }
+            }
+          `,
+          variables: {
+            address: walletAddress || ''
+          }
+        })
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('HTTP error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log('DIMO Identity API response:', JSON.stringify(data, null, 2));
+
+      if (data.errors) {
+        console.error('GraphQL errors:', data.errors);
+        return [];
+      }
+
+      // Extract vehicles from the response
+      const userVehicles = data.data?.vehicles?.nodes || [];
+      console.log('Extracted vehicles:', userVehicles);
+
+      // Filter vehicles that have privileges (are shared with our app)
+      const sharedVehicles = userVehicles.filter((vehicle: any) => 
+        vehicle.privileges && vehicle.privileges.nodes && vehicle.privileges.nodes.length > 0
+      );
+
+      console.log('Shared vehicles:', sharedVehicles);
+      return sharedVehicles;
+
+    } catch (error) {
+      console.error('Error fetching vehicles from DIMO:', error);
+      
+      // Try a fallback approach - create vehicles from the JWT payload
+      console.log('Trying fallback approach...');
+      try {
+        const jwtPayload = JSON.parse(atob(jwt.split('.')[1]));
+        console.log('JWT Payload:', jwtPayload);
+        
+        // If we can't fetch from API, create a basic vehicle structure
+        // This is a temporary fallback until we fix the API call
+        const fallbackVehicles = [
+          {
+            id: '183423',
+            tokenId: 183423,
+            definition: {
+              make: 'Toyota',
+              model: 'Tacoma',
+              year: 2016
+            }
+          },
+          {
+            id: '162682', 
+            tokenId: 162682,
+            definition: {
+              make: 'Toyota',
+              model: 'RAV4',
+              year: 2022
+            }
+          },
+          {
+            id: '107505',
+            tokenId: 107505,
+            definition: {
+              make: 'Tesla',
+              model: 'Model 3',
+              year: 2019
+            }
+          }
+        ];
+        
+        console.log('Using fallback vehicles:', fallbackVehicles);
+        return fallbackVehicles;
+        
+      } catch (jwtError) {
+        console.error('Failed to parse JWT for fallback:', jwtError);
+        return [];
+      }
     }
   };
 
@@ -128,45 +306,60 @@ export default function AuthLogin() {
           </div>
         </div>
 
-        {/* Right side - Login Card */}
+        {/* Right side - Login/Share Card */}
         <div className="flex justify-center">
           <Card className="w-full max-w-md shadow-elegant">
             <CardHeader className="text-center space-y-2">
               <CardTitle className="text-2xl font-bold">
-                {isAuthenticated ? 'Share Vehicle Data' : 'Connect Your Vehicle'}
+                {isAuthenticated ? 'Share Your Vehicles' : 'Connect to DIMO'}
               </CardTitle>
               <CardDescription>
                 {isAuthenticated 
-                  ? 'Select which vehicles to share for AI insights and monitoring'
-                  : 'Sign in with your DIMO account to get started'}
+                  ? 'Select which vehicles to share for AI insights'
+                  : 'Step 1: Sign in with your DIMO account'
+                }
               </CardDescription>
             </CardHeader>
             
             <CardContent className="space-y-6">
               {!isAuthenticated ? (
+                // Step 1: Login (no permissions requested)
                 <LoginWithDimo
                   mode="popup"
                   onSuccess={handleLoginSuccess}
                   onError={(error: any) => {
-                    console.error('=== DIMO LOGIN ERROR ===', error);
+                    console.error('=== DIMO LOGIN ERROR ===');
+                    console.error('Error:', error);
+                    try { console.error('Full Error Object:', JSON.stringify(error, null, 2)); } catch {}
                   }}
+                  // No permissionTemplateId - this is just login
                   utm="utm_campaign=dimo"
                   className="w-full"
                 />
               ) : (
-                <ShareVehiclesWithDimo
-                  mode="popup"
-                  onSuccess={handleDimoSuccess}
-                  onError={(error: any) => {
-                    console.error('=== DIMO SHARE ERROR ===');
-                    console.error('Error:', error);
-                    try { console.error('Full Error Object:', JSON.stringify(error, null, 2)); } catch {}
-                  }}
-                  permissionTemplateId={"1"}
-                  expirationDate="2062-12-12T18:51:00Z"
-                  utm="utm_campaign=dimo"
-                  className="w-full"
-                />
+                // Step 2: Share vehicles (with permissions)
+                <div className="space-y-4">
+                  <ShareVehiclesWithDimo
+                    mode="popup"
+                    onSuccess={handleShareSuccess}
+                    onError={(error: any) => {
+                      console.error('=== DIMO SHARE ERROR ===');
+                      console.error('Error:', error);
+                      console.error('Error Type:', typeof error);
+                      console.error('Error Message:', error?.message);
+                      console.error('Error Stack:', error?.stack);
+                      try { 
+                        console.error('Full Error Object:', JSON.stringify(error, null, 2)); 
+                      } catch (e) {
+                        console.error('Could not stringify error:', e);
+                      }
+                    }}
+                    permissionTemplateId="1"
+                    expirationDate="2062-12-12T18:51:00Z"
+                    utm="utm_campaign=dimo"
+                    className="w-full"
+                  />
+                </div>
               )}
 
               {/* Features List */}

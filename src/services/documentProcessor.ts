@@ -554,7 +554,6 @@ IMPORTANT RULES:
   }
 
   private parseOpenAIResponse(content: string): DocumentAnalysis {
-    console.log('Raw OpenAI response:', content);
     
     try {
       // First try: direct JSON parse

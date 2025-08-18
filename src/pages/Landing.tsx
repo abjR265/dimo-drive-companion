@@ -157,7 +157,7 @@ export default function Landing() {
 
                             // Get the first vehicle's tokenId (or use a default)
                             const firstVehicle = userVehicles[0];
-                            const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
+                            const tokenId = firstVehicle?.tokenId || firstVehicle?.id || 999999; // Use actual token ID or clearly fake one
 
                                   // User authentication data processed
 
