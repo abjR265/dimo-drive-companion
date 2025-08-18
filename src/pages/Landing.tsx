@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import heroImage from "@/assets/hero-automotive.jpg";
 import { useState } from 'react';
-import { LoginWithDimo } from '@dimo-network/login-with-dimo';
+import { LoginWithDimo, ShareVehiclesWithDimo } from '@dimo-network/login-with-dimo';
 
 export default function Landing() {
   const features = [
@@ -92,7 +92,7 @@ export default function Landing() {
                   variant="hero" 
                   size="xl" 
                   className="group"
-                  onClick={() => setShowDimoLogin(true)}
+                  onClick={() => (window.location.href = '/auth/login')}
                 >
                   Connect to DIMO
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
@@ -101,12 +101,9 @@ export default function Landing() {
                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="bg-background p-8 rounded-lg shadow-lg relative">
                       <button className="absolute top-2 right-2 text-xl" onClick={() => setShowDimoLogin(false)}>&times;</button>
-                      <LoginWithDimo
-                        mode="popup"
-                        clientId={import.meta.env.VITE_DIMO_CLIENT_ID || ''}
-                        redirectUri={import.meta.env.VITE_DIMO_REDIRECT_URI || ''}
-                        apiKey={import.meta.env.VITE_DIMO_API_KEY || ''}
-                        onSuccess={async (authData: any) => {
+                      <ShareVehiclesWithDimo
+                          mode="popup"
+                          onSuccess={async (authData: any) => {
                               // DIMO Login Success - auth data received
                           
                           // Debug: Check for wallet address in different possible locations
@@ -143,57 +140,6 @@ export default function Landing() {
                                 // Wallet address extracted from JWT
                               } catch (error) {
                                 console.error('Failed to decode JWT payload:', error);
-                              }
-                            }
-                            
-                            // Convert base64 wallet address to Ethereum address format
-                            if (walletAddress && walletAddress.startsWith('Ciowe')) {
-                              try {
-                                // Decode base64
-                                const decoded = atob(walletAddress);
-                                console.log('Decoded base64:', decoded);
-                                
-                                // Convert to hex string
-                                const hexString = Array.from(decoded).map(b => b.charCodeAt(0).toString(16).padStart(2, '0')).join('');
-                                console.log('Full hex string:', hexString);
-                                
-                                // Extract the Ethereum address - it should be 20 bytes (40 hex chars)
-                                // Look for a pattern that looks like an Ethereum address
-                                const ethereumAddressMatch = hexString.match(/0x[a-fA-F0-9]{40}/);
-                                if (ethereumAddressMatch) {
-                                  walletAddress = ethereumAddressMatch[0];
-                                } else {
-                                  // If no match, try to extract from the JWT payload directly
-                                  try {
-                                    const jwtPayload = JSON.parse(atob(userJWT.split('.')[1]));
-                                    console.log('JWT Payload for address extraction:', jwtPayload);
-                                    
-                                    // Look for ethereum_address in the JWT
-                                    if (jwtPayload.ethereum_address) {
-                                      walletAddress = jwtPayload.ethereum_address;
-                                      // Found ethereum_address in JWT
-                                    } else {
-                                      console.error('No valid Ethereum address found in JWT payload');
-                                      walletAddress = null;
-                                    }
-                                  } catch (error) {
-                                    console.error('Failed to extract address from JWT:', error);
-                                    walletAddress = null;
-                                  }
-                                }
-                                
-                                // Final wallet address determined
-                                
-                                // Validate the address format
-                                if (walletAddress && walletAddress.length === 42 && walletAddress.startsWith('0x')) {
-                                  // Valid Ethereum address confirmed
-                                } else {
-                                  console.error('Invalid Ethereum address format:', walletAddress);
-                                  walletAddress = null;
-                                }
-                              } catch (error) {
-                                console.error('Failed to convert wallet address:', error);
-                                walletAddress = null;
                               }
                             }
                             
@@ -236,6 +182,7 @@ export default function Landing() {
                         onError={(error: any) => {
                           console.error('Error:', error);
                         }}
+                        permissionTemplateId="1"
                         className="w-full"
                       />
                     </div>

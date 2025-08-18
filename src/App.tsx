@@ -11,9 +11,25 @@ import { AIChatEnhanced } from "./components/AIChatEnhanced";
 import AuthLogin from "./pages/AuthLogin";
 import NotFound from "./pages/NotFound";
 import { AppLayout } from "./components/layout/AppLayout";
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { initializeDimoSDK, DimoAuthProvider } from '@dimo-network/login-with-dimo';
 import { trpc, trpcClientConfig } from '@/lib/trpc';
+
+// Initialize DIMO SDK at module load (before any component mounts)
+(() => {
+  try {
+    const clientId = import.meta.env.VITE_DIMO_CLIENT_ID || '';
+    const redirectUri = import.meta.env.VITE_DIMO_REDIRECT_URI || '';
+    const apiKey = import.meta.env.VITE_DIMO_API_KEY || '';
+    if (clientId && redirectUri) {
+      initializeDimoSDK({ clientId, redirectUri, apiKey });
+    } else {
+      console.warn('DIMO SDK not initialized: missing clientId or redirectUri');
+    }
+  } catch (e) {
+    console.error('Failed to initialize DIMO SDK:', e);
+  }
+})();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,23 +48,6 @@ const queryClient = new QueryClient({
 
 const App = () => {
   const [trpcClient] = useState(() => trpc.createClient(trpcClientConfig));
-
-  useEffect(() => {
-    // Environment variables check (sanitized)
-    const hasRequiredEnvVars = import.meta.env.VITE_DIMO_CLIENT_ID && 
-                              import.meta.env.VITE_DIMO_API_KEY && 
-                              import.meta.env.VITE_DIMO_DOMAIN;
-    
-    if (!hasRequiredEnvVars) {
-      console.warn('⚠️ Some DIMO environment variables are not configured');
-    }
-    
-    initializeDimoSDK({
-      clientId: import.meta.env.VITE_DIMO_CLIENT_ID || '',
-      redirectUri: import.meta.env.VITE_DIMO_REDIRECT_URI || '',
-      apiKey: import.meta.env.VITE_DIMO_API_KEY || '',
-    });
-  }, []);
 
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

@@ -1,10 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Shield, Zap, Users } from "lucide-react";
-// Note: LoginWithDimo component will be integrated here
-import { LoginWithDimo } from '@dimo-network/login-with-dimo';
+import { useState } from "react";
+import { LoginWithDimo, ShareVehiclesWithDimo } from '@dimo-network/login-with-dimo';
 
 export default function AuthLogin() {
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
   const benefits = [
     {
       icon: Car,
@@ -28,9 +31,21 @@ export default function AuthLogin() {
     }
   ];
 
-  // Handle successful DIMO login
+  // Step 1 success: user authenticated
+  const handleLoginSuccess = (authData: any) => {
+    try {
+      console.log('=== DIMO LOGIN SUCCESS ===');
+      console.log('Auth Data Keys:', Object.keys(authData || {}));
+    } catch {}
+    setIsAuthenticated(true);
+  };
+
+  // Final success: permissions shared
   const handleDimoSuccess = async (authData: any) => {
-    // DIMO Login Success
+    console.log('=== DIMO SHARE SUCCESS ===');
+    try {
+      console.log('Auth Data:', JSON.stringify(authData, null, 2));
+    } catch {}
     
     try {
       // Extract user data from auth response
@@ -50,17 +65,9 @@ export default function AuthLogin() {
         return;
       }
 
-      if (!walletAddress) {
-        console.error('No wallet address found in auth data');
-        // Auth data keys available
-        // Continue anyway, wallet address is optional for now
-      }
-
       // Get the first vehicle's tokenId (or use a default)
       const firstVehicle = userVehicles[0];
       const tokenId = firstVehicle?.tokenId || 8; // Fallback to your Mercedes-Benz
-
-      // User authentication data processed
 
       // Store auth data in localStorage for the dashboard
       localStorage.setItem('dimoAuth', JSON.stringify({
@@ -75,7 +82,7 @@ export default function AuthLogin() {
       window.location.href = '/dashboard';
       
     } catch (error) {
-      console.error('Error processing DIMO login:', error);
+      console.error('Error processing DIMO vehicle sharing:', error);
       // Still redirect to dashboard even if there's an error
       window.location.href = '/dashboard';
     }
@@ -125,25 +132,42 @@ export default function AuthLogin() {
         <div className="flex justify-center">
           <Card className="w-full max-w-md shadow-elegant">
             <CardHeader className="text-center space-y-2">
-              <CardTitle className="text-2xl font-bold">Connect Your Vehicle</CardTitle>
+              <CardTitle className="text-2xl font-bold">
+                {isAuthenticated ? 'Share Vehicle Data' : 'Connect Your Vehicle'}
+              </CardTitle>
               <CardDescription>
-                Sign in with your DIMO account to access your vehicle data and AI insights
+                {isAuthenticated 
+                  ? 'Select which vehicles to share for AI insights and monitoring'
+                  : 'Sign in with your DIMO account to get started'}
               </CardDescription>
             </CardHeader>
             
             <CardContent className="space-y-6">
-              {/* DIMO Login Button */}
-              <LoginWithDimo
-                mode="popup"
-                clientId={import.meta.env.VITE_DIMO_CLIENT_ID || ''}
-                redirectUri={import.meta.env.VITE_DIMO_REDIRECT_URI || ''}
-                apiKey={import.meta.env.VITE_DIMO_API_KEY || ''}
-                onSuccess={handleDimoSuccess}
-                onError={(error: any) => {
-                  console.error('DIMO Login Error:', error);
-                }}
-                className="w-full"
-              />
+              {!isAuthenticated ? (
+                <LoginWithDimo
+                  mode="popup"
+                  onSuccess={handleLoginSuccess}
+                  onError={(error: any) => {
+                    console.error('=== DIMO LOGIN ERROR ===', error);
+                  }}
+                  utm="utm_campaign=dimo"
+                  className="w-full"
+                />
+              ) : (
+                <ShareVehiclesWithDimo
+                  mode="popup"
+                  onSuccess={handleDimoSuccess}
+                  onError={(error: any) => {
+                    console.error('=== DIMO SHARE ERROR ===');
+                    console.error('Error:', error);
+                    try { console.error('Full Error Object:', JSON.stringify(error, null, 2)); } catch {}
+                  }}
+                  permissionTemplateId={"1"}
+                  expirationDate="2062-12-12T18:51:00Z"
+                  utm="utm_campaign=dimo"
+                  className="w-full"
+                />
+              )}
 
               {/* Features List */}
               <div className="space-y-3 pt-4 border-t border-border">
