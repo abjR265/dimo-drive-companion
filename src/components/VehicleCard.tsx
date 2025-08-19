@@ -116,10 +116,26 @@ export function VehicleCard({ vehicle, onAIAnalysisComplete, showFullFeatures = 
             <Car className="h-5 w-5 text-primary" />
             <CardTitle className="text-lg">{vehicle.name}</CardTitle>
           </div>
-          <Badge variant={vehicle.status === 'optimal' ? 'default' : 'secondary'}>
-            <StatusIcon className="h-3 w-3 mr-1" />
-            {vehicle.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant={vehicle.status === 'optimal' ? 'default' : 'secondary'}>
+              <StatusIcon className="h-3 w-3 mr-1" />
+              {vehicle.status}
+            </Badge>
+            {vehicle.tokenId && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  try { localStorage.setItem('activeVehicleTokenId', String(vehicle.tokenId)); } catch {}
+                  window.location.href = `/ai-chat?tokenId=${vehicle.tokenId}`;
+                }}
+                className="flex items-center gap-1"
+              >
+                <Sparkles className="h-3 w-3" />
+                Ask AI
+              </Button>
+            )}
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           {vehicle.year} {vehicle.model} • {vehicle.type}

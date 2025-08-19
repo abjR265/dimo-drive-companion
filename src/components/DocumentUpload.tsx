@@ -124,6 +124,22 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
 
+  // Helper: resolve user's primary tokenId from stored auth
+  const getPrimaryTokenIdFromAuth = (): number | null => {
+    try {
+      const storedAuth = localStorage.getItem('dimoAuth');
+      if (!storedAuth) return null;
+      const parsed = JSON.parse(storedAuth);
+      const candidates = [...(parsed.sharedVehicles || []), ...(parsed.vehicles || [])];
+      const first = candidates.find((v: any) => v?.tokenId || v?.id);
+      const t = first?.tokenId || first?.id || parsed?.tokenId;
+      if (t && !Number.isNaN(Number(t))) return Number(t);
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   // Initialize document processor
   useEffect(() => {
     const initProcessor = async () => {
@@ -156,7 +172,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         
         const parsedAuth = JSON.parse(storedAuth);
         const walletAddress = parsedAuth.walletAddress;
-        const userTokenId = parsedAuth.tokenId; // This should be 8 for your current vehicle
+        const userTokenId = parsedAuth.tokenId; // user primary token (if any)
         
         // User token ID retrieved from auth
         
@@ -170,7 +186,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         const userVehicles = await db.getVehiclesByUserId(user.id);
         const tokenIds = userVehicles.map(v => v.token_id);
         
-        // Always include the user's main token ID (should be 8)
+        // Always include the user's main token ID (if available)
         if (userTokenId && !tokenIds.includes(userTokenId)) {
           tokenIds.push(userTokenId);
         }
@@ -312,7 +328,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
       try {
         createdDbDoc = await db.createDocument({
           vehicleId: targetVehicleId,
-          tokenId: tokenId || vehicleMatch?.tokenId || 8, // Use props tokenId first, then vehicle match
+          tokenId: tokenId || vehicleMatch?.tokenId || getPrimaryTokenIdFromAuth() || 999999, // avoid magic constants
           type: document.type,
           filename: document.filename,
           originalName: document.originalName,
@@ -372,7 +388,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         } else {
           updateProgress(95, 'Creating DIMO attestation...');
           
-          const vehicleTokenId = tokenId || vehicleMatch?.tokenId || 8;
+          const vehicleTokenId = tokenId || vehicleMatch?.tokenId || getPrimaryTokenIdFromAuth() || 999999;
           const attestationSuccess = await dimoAttestationService.createDocumentAttestation(
             processedData,
             vehicleTokenId,

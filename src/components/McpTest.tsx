@@ -20,7 +20,25 @@ interface McpTestResult {
 
 export function McpTest() {
   const [vin, setVin] = useState('1HGCM82633A123456');
-  const [tokenId, setTokenId] = useState('8');
+  const [tokenId, setTokenId] = useState(() => {
+    // Default from URL/localStorage/auth if present
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlToken = params.get('tokenId');
+      if (urlToken && !Number.isNaN(Number(urlToken))) return urlToken;
+      const active = localStorage.getItem('activeVehicleTokenId');
+      if (active && !Number.isNaN(Number(active))) return active;
+      const auth = localStorage.getItem('dimoAuth');
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        const candidates = [...(parsed.sharedVehicles || []), ...(parsed.vehicles || [])];
+        const first = candidates.find((v: any) => v?.tokenId || v?.id);
+        const t = first?.tokenId || first?.id || parsed?.tokenId;
+        if (t && !Number.isNaN(Number(t))) return String(t);
+      }
+    } catch {}
+    return '999999'; // fallback demo
+  });
   const [results, setResults] = useState<McpTestResult[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -93,7 +111,7 @@ export function McpTest() {
         <CardHeader>
           <CardTitle>DIMO MCP Server Test</CardTitle>
           <CardDescription>
-            Test the DIMO MCP server integration with your Mercedes-Benz (Token ID: 8)
+            Test the DIMO MCP server integration. Current token: {tokenId || 'not set'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

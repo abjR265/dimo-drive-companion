@@ -46,6 +46,9 @@ interface Conversation {
 const callMcpServer = async (endpoint: string, data: any) => {
   try {
     const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
+    console.log(`MCP Call: ${endpoint} to ${mcpServerUrl}/mcp/tools/${endpoint}`);
+    console.log('MCP Request data:', data);
+    
     const response = await fetch(`${mcpServerUrl}/mcp/tools/${endpoint}`, {
       method: 'POST',
       headers: {
@@ -54,11 +57,16 @@ const callMcpServer = async (endpoint: string, data: any) => {
       body: JSON.stringify({ params: data }),
     });
 
+    console.log(`MCP Response status: ${response.status}`);
+    
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`MCP HTTP Error: ${response.status} - ${errorText}`);
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const result = await response.json();
+    console.log(`MCP Response for ${endpoint}:`, result);
     return result;
   } catch (error) {
     console.error(`MCP ${endpoint} error:`, error);
@@ -106,14 +114,20 @@ const callOpenAI = async (messages: any[], functions?: any[]) => {
 
 // Real AI analysis using OpenAI + MCP
 const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
+  console.log('=== PERFORMING REAL AI ANALYSIS ===');
+  console.log('Query:', query);
+  console.log('Vehicle Token ID:', vehicleTokenId);
+
+  let vehicleData: any = {};
+
   try {
     // Step 1: Gather real vehicle data from MCP
     // Gathering vehicle data from DIMO MCP
-    
-    const vehicleData: any = {};
+    console.log('Step 1: Gathering vehicle data from MCP...');
     
     // Get vehicle identity
     try {
+      console.log(`Fetching identity for vehicle ${vehicleTokenId}...`);
       const identityResult = await callMcpServer('identity_query', {
         query: `{
           vehicle(tokenId: ${vehicleTokenId}) {
@@ -131,14 +145,17 @@ const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
       
       if (identityResult.success && identityResult.data?.vehicle) {
         vehicleData.identity = identityResult.data.vehicle;
-        // Vehicle identity retrieved
+        console.log('Vehicle identity retrieved:', vehicleData.identity);
+      } else {
+        console.warn('Identity query failed or no data returned:', identityResult);
       }
     } catch (error) {
-      console.warn('⚠️ Identity query failed:', error);
+      console.error('Identity query failed:', error);
     }
 
     // Get vehicle telemetry (current and historical)
     try {
+      console.log(`Fetching telemetry for vehicle ${vehicleTokenId}...`);
       // Get current telemetry with available fields only
       const currentTelemetryResult = await callMcpServer('telemetry_query', {
         query: `{
@@ -246,19 +263,40 @@ const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
           current: currentTelemetryResult.data?.signalsLatest,
           historical: historicalTelemetryResult.data?.signals
         };
-        // Vehicle telemetry retrieved (current + historical)
+        console.log('Vehicle telemetry retrieved (current + historical):', vehicleData.telemetry);
       } else if (currentTelemetryResult.success) {
         vehicleData.telemetry = {
           current: currentTelemetryResult.data?.signalsLatest,
           historical: []
         };
-        // Vehicle telemetry retrieved (current only)
+        console.log('Vehicle telemetry retrieved (current only):', vehicleData.telemetry);
+      } else {
+        console.warn('Telemetry query failed:', { current: currentTelemetryResult, historical: historicalTelemetryResult });
       }
     } catch (error) {
-      console.warn('⚠️ Telemetry query failed:', error);
+      console.error('Telemetry query failed:', error);
     }
 
+    // Check if we have any meaningful vehicle data
+    console.log('Vehicle data collected:', vehicleData);
+    if (!vehicleData.identity && !vehicleData.telemetry) {
+      console.log('No vehicle data available - returning error');
+      return {
+        type: 'fallback',
+        data: {
+          response: `I'm unable to access your vehicle data from DIMO for vehicle ID ${vehicleTokenId}. This could be due to:\n\n• MCP server connection issues\n• Vehicle token ID ${vehicleTokenId} not found in DIMO\n• Authentication problems with DIMO\n• Vehicle not properly connected to DIMO\n\nPlease check your DIMO connection and try again.`,
+          error: 'No vehicle data available'
+        }
+      };
+    }
+
+    // Derive a human-readable vehicle name for prompts
+    const def = vehicleData?.identity?.definition;
+    const vehicleName = def ? `${def.make || ''} ${def.model || ''} ${def.year ? `(${def.year})` : ''}`.trim() || `Vehicle ${vehicleTokenId}` : `Vehicle ${vehicleTokenId}`;
+    console.log('Vehicle name derived:', vehicleName);
+
     // Step 2: Create OpenAI function definitions for MCP tools
+    console.log('Step 2: Creating OpenAI function definitions...');
     const functions = [
       {
         name: "analyze_vehicle_health",
@@ -354,7 +392,7 @@ const performRealAIAnalysis = async (query: string, vehicleTokenId: number) => {
     // Step 3: Create system message with vehicle context
     const systemMessage = {
       role: 'system',
-      content: `You are an AI automotive assistant for a Mercedes-Benz C-Class (Vehicle ID: ${vehicleTokenId}). 
+      content: `You are an AI automotive assistant for ${vehicleName} (Token ID: ${vehicleTokenId}). 
 
 Vehicle Data:
 ${JSON.stringify(vehicleData, null, 2)}
@@ -387,10 +425,18 @@ Use this rich data to provide detailed analysis including:
 IMPORTANT: Do not use any emojis or bold formatting (**) in your responses. Provide clean, professional text only.
 
 UNIT CONVERSION RULES:
-- All odometer readings (powertrainTransmissionTravelledDistance) are in KILOMETERS
-- When asked for miles, convert from kilometers: 1 kilometer = 0.621371 miles
-- Speed values are typically in km/h, convert to mph when needed: 1 km/h = 0.621371 mph
-- Always specify the unit (km, miles, km/h, mph) in your responses
+- All DIMO data (odometer, distance, speed) is in KILOMETERS/KM/H
+- When user asks for miles/mph, automatically convert: 1 km = 0.621371 miles, 1 km/h = 0.621371 mph
+- Provide the converted value directly without explaining the conversion process
+- Always specify the unit in your response
+ 
+STRICT OUTPUT RULES:
+- Return plain text only (no Markdown formatting)
+- Do not use any bold formatting
+- Do not include any asterisks characters '**' in the response
+- Do not use emojis
+- When converting units, provide the answer directly without explaining the conversion process
+- Be concise and direct in your responses
 
 Always use the provided functions to structure your responses. Be helpful, accurate, and safety-focused.`
     };
@@ -434,19 +480,127 @@ Always use the provided functions to structure your responses. Be helpful, accur
     return {
       type: 'general',
       data: {
-        response: aiResponse.content,
+        response: (aiResponse.content || '').replace(/\*\*/g, ''),
         vehicleData: vehicleData
       }
     };
 
   } catch (error) {
-    console.error('❌ Real AI analysis failed:', error);
+    console.error('Real AI analysis failed:', error);
     
-    // Fallback to mock response if OpenAI fails
+    // Check if we have any vehicle data at all
+    if (!vehicleData.identity && !vehicleData.telemetry) {
+      return {
+        type: 'fallback',
+        data: {
+          response: `I'm unable to access your vehicle data from DIMO at the moment. This could be due to:\n\n• MCP server connection issues\n• Vehicle token ID ${vehicleTokenId} not found\n• Authentication problems with DIMO\n\nPlease check your DIMO connection and try again.`,
+          error: error.message
+        }
+      };
+    }
+    
+    // Fallback to mock response if OpenAI fails but we have some data
     return {
       type: 'fallback',
       data: {
-        response: `I'm having trouble accessing the AI analysis service right now. Here's what I can tell you about your Mercedes-Benz C-Class (Vehicle ID: ${vehicleTokenId}): The vehicle appears to be in good condition based on available data. Please try again later or contact support if the issue persists.`,
+        response: `I'm having trouble with the AI analysis service, but I can see some vehicle data. Please try again later or contact support if the issue persists.`,
+        error: error.message
+      }
+    };
+  }
+};
+
+// Fleet-wide AI analysis across multiple vehicles
+const performFleetAIAnalysis = async (query: string, vehicleTokenIds: number[]) => {
+  console.log(' === PERFORMING FLEET AI ANALYSIS ===');
+  console.log('Query:', query);
+  console.log('Vehicle Token IDs:', vehicleTokenIds);
+  
+  try {
+    const vehicles: any[] = [];
+
+    for (const tokenId of vehicleTokenIds) {
+      console.log(`Processing vehicle ${tokenId}...`);
+      const vehicleData: any = { tokenId };
+      try {
+        const identityResult = await callMcpServer('identity_query', {
+          query: `{
+            vehicle(tokenId: ${tokenId}) {
+              tokenId
+              definition { make model year }
+            }
+          }`,
+          variables: {}
+        });
+        if (identityResult.success && identityResult.data?.vehicle) {
+          vehicleData.identity = identityResult.data.vehicle;
+          console.log(`Vehicle ${tokenId} identity retrieved:`, vehicleData.identity);
+        } else {
+          console.warn(`Vehicle ${tokenId} identity failed:`, identityResult);
+        }
+      } catch (error) {
+        console.error(`Vehicle ${tokenId} identity error:`, error);
+      }
+
+      try {
+        const currentTelemetryResult = await callMcpServer('telemetry_query', {
+          query: `{
+            signalsLatest(tokenId: ${tokenId}) {
+              speed { value timestamp }
+              powertrainFuelSystemRelativeLevel { value timestamp }
+              powertrainTransmissionTravelledDistance { value timestamp }
+              exteriorAirTemperature { value timestamp }
+            }
+          }`,
+          variables: {},
+          tokenId
+        });
+        if (currentTelemetryResult.success) {
+          vehicleData.telemetry = { current: currentTelemetryResult.data?.signalsLatest };
+        }
+      } catch {}
+
+      vehicles.push(vehicleData);
+    }
+
+    const systemMessage = {
+      role: 'system',
+      content: `You are an AI automotive assistant for a user's fleet. Multiple vehicles are connected.
+
+Fleet Data:
+${JSON.stringify(vehicles, null, 2)}
+
+Your role is to compare vehicles and provide recommendations such as:
+- Which car is best for an upcoming long drive
+- Which vehicle needs maintenance soon
+- Which vehicle has better fuel efficiency or current readiness
+
+UNIT CONVERSION RULES:
+- All DIMO data (odometer, distance, speed) is in KILOMETERS/KM/H
+- When user asks for miles/mph, automatically convert: 1 km = 0.621371 miles, 1 km/h = 0.621371 mph
+- Provide the converted value directly without explaining the conversion process
+- Always specify the unit in your response
+
+Consider each vehicle's make/model/year and latest telemetry (fuel/battery, odometer, temperatures, speed). Provide clear, actionable suggestions. Avoid emojis and bold formatting.`
+    };
+
+    const userMessage = { role: 'user', content: query };
+
+    const aiResponse = await callOpenAI([systemMessage, userMessage]);
+
+    return {
+      type: 'general',
+      data: {
+        response: (aiResponse.content || '').replace(/\*\*/g, ''),
+        vehicles
+      }
+    };
+  } catch (error: any) {
+    console.error('❌ Fleet AI analysis failed:', error);
+    return {
+      type: 'fallback',
+      data: {
+        response: `I'm having trouble analyzing all vehicles right now. Please try again shortly.`,
         error: error.message
       }
     };
@@ -457,30 +611,118 @@ export const AIChatEnhanced: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedVehicle, setSelectedVehicle] = useState<number>(8); // Mercedes C-Class
+  const [selectedVehicle, setSelectedVehicle] = useState<number | null>(null);
+  const [vehicleLabel, setVehicleLabel] = useState<string>('Your Vehicle');
   const [conversationContext, setConversationContext] = useState<string>('');
   const [aiCapabilities, setAiCapabilities] = useState<string[]>([]);
   const [mcpHealth, setMcpHealth] = useState<boolean>(false);
   const [openaiStatus, setOpenaiStatus] = useState<boolean>(false);
+  const [availableVehicles, setAvailableVehicles] = useState<Array<{ tokenId: number; name: string }>>([]);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Mock vehicle data - same as Dashboard
-  const mercedesVehicle = {
-    id: 'mercedes-c-class-2014',
-    name: 'Mercedes-Benz C-Class',
-    model: 'C-Class',
-    year: 2014,
-    type: 'gas' as const,
-    healthScore: 85,
-    status: 'optimal' as const,
-    fuelLevel: 0.60,
-    mileage: 45000,
-    lastService: '2024-01-10',
-    aiInsight: 'Your Mercedes-Benz C-Class is running smoothly.',
-    tokenId: 8,
-    location: { latitude: 37.7749, longitude: -122.4194 }
-  };
+  // Resolve initial vehicle list and selection: URL -> localStorage -> dimoAuth -> Identity API
+  useEffect(() => {
+    const loadVehicles = async () => {
+      let preselected: number | null = null;
+      try {
+        // 1) URL param takes precedence
+        const params = new URLSearchParams(window.location.search);
+        const urlToken = params.get('tokenId');
+        if (urlToken && !Number.isNaN(Number(urlToken))) {
+          preselected = Number(urlToken);
+        }
+
+        // 2) Previously selected active vehicle (supports fleet option 0)
+        if (preselected === null) {
+          const activeToken = localStorage.getItem('activeVehicleTokenId');
+          if (activeToken && !Number.isNaN(Number(activeToken))) {
+            preselected = Number(activeToken);
+          }
+        }
+
+        // 3) From DIMO auth blob (sharedVehicles/vehicles)
+        const storedAuth = localStorage.getItem('dimoAuth');
+        let list: Array<{ tokenId: number; name: string }> = [];
+        if (storedAuth) {
+          const parsed = JSON.parse(storedAuth);
+          const candidates = [...(parsed.sharedVehicles || []), ...(parsed.vehicles || [])];
+          candidates.forEach((v: any) => {
+            const t = v?.tokenId || v?.id;
+            if (!t) return;
+            let name = '';
+            if (v?.definition) {
+              const def = v.definition;
+              name = `${def?.make || ''} ${def?.model || ''}`.trim();
+              if (def?.year) name = `${name} (${def.year})`;
+            } else if (v?.make || v?.model || v?.year) {
+              name = `${v?.make || ''} ${v?.model || ''}`.trim();
+              if (v?.year) name = `${name} (${v.year})`;
+            } else if (v?.name) {
+              name = v.name;
+            }
+            list.push({ tokenId: Number(t), name: name || `Vehicle ${t}` });
+          });
+
+          // 4) If we still have fewer than 2 vehicles, fetch from Identity API using jwt + wallet
+          if (list.length < 2 && parsed?.jwt && parsed?.walletAddress) {
+            try {
+              const response = await fetch('https://identity-api.dimo.zone/query', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${parsed.jwt}`
+                },
+                body: JSON.stringify({
+                  query: `query GetVehiclesByOwner($owner: Address!) {
+                    vehicles(filterBy: {owner: $owner}, first: 100) {
+                      nodes { tokenId definition { make model year } }
+                    }
+                  }`,
+                  variables: { owner: parsed.walletAddress }
+                })
+              });
+              if (response.ok) {
+                const data = await response.json();
+                const nodes = data?.data?.vehicles?.nodes || [];
+                nodes.forEach((v: any) => {
+                  const t = v?.tokenId || v?.id;
+                  if (!t) return;
+                  const def = v?.definition || {};
+                  let name = `${def?.make || ''} ${def?.model || ''}`.trim();
+                  if (def?.year) name = `${name} (${def.year})`;
+                  list.push({ tokenId: Number(t), name: name || `Vehicle ${t}` });
+                });
+              }
+            } catch (err) {
+              console.warn('Identity API vehicle fetch failed', err);
+            }
+          }
+
+          // Preselect fallback
+          if (preselected === null) {
+            const first = (parsed.sharedVehicles || [])[0] || (parsed.vehicles || [])[0];
+            const tokenId = first?.tokenId || first?.id || parsed?.tokenId;
+            if (tokenId && !Number.isNaN(Number(tokenId))) {
+              preselected = Number(tokenId);
+            }
+          }
+        }
+
+        // De-duplicate by tokenId and prepend ALL option if we have at least one vehicle
+        const uniqueList = list.filter((veh, idx, self) => idx === self.findIndex(x => x.tokenId === veh.tokenId));
+        setAvailableVehicles(uniqueList.length > 0 ? [{ tokenId: 0, name: 'All Vehicles' }, ...uniqueList] : []);
+
+        // Final selection
+        setSelectedVehicle(preselected ?? (uniqueList[0]?.tokenId ?? 999999));
+      } catch (e) {
+        console.warn('Failed to resolve initial vehicle tokenId', e);
+        setSelectedVehicle(999999);
+      }
+    };
+
+    loadVehicles();
+  }, []);
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -491,16 +733,35 @@ export const AIChatEnhanced: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  // Load AI capabilities and MCP health on component mount
+  // Debug logging for vehicle state
+  useEffect(() => {
+    console.log('=== VEHICLE STATE DEBUG ===');
+    console.log('Selected Vehicle:', selectedVehicle);
+    console.log('Available Vehicles:', availableVehicles);
+    console.log('Messages count:', messages.length);
+  }, [selectedVehicle, availableVehicles, messages.length]);
+
+  // Load AI capabilities and MCP health on component mount and set welcome message
   useEffect(() => {
     const loadInitialData = async () => {
       try {
         // Check MCP server health
         const mcpServerUrl = import.meta.env.VITE_MCP_SERVER_URL || 'http://localhost:3001';
-        const healthResponse = await fetch(`${mcpServerUrl}/health`);
-        if (healthResponse.ok) {
-          const healthData = await healthResponse.json();
-          setMcpHealth(healthData.status === 'healthy');
+        console.log('Checking MCP server health at:', mcpServerUrl);
+        try {
+          const healthResponse = await fetch(`${mcpServerUrl}/health`);
+          console.log('MCP health response status:', healthResponse.status);
+          if (healthResponse.ok) {
+            const healthData = await healthResponse.json();
+            console.log('MCP health data:', healthData);
+            setMcpHealth(healthData.status === 'healthy');
+          } else {
+            console.error('MCP health check failed:', healthResponse.status);
+            setMcpHealth(false);
+          }
+        } catch (error) {
+          console.error('MCP health check error:', error);
+          setMcpHealth(false);
         }
         
         // Check OpenAI API key
@@ -516,12 +777,36 @@ export const AIChatEnhanced: React.FC = () => {
         capabilities.push('Maintenance Recommendations');
         
         setAiCapabilities(capabilities);
+
+        // Try to enrich vehicle label from Identity API if we have a selected token
+        let nameLabel = 'Your Vehicle';
+        if (selectedVehicle === 0) {
+          nameLabel = 'All Vehicles';
+        } else if (selectedVehicle) {
+          try {
+            const identityResult = await callMcpServer('identity_query', {
+              query: `{
+                vehicle(tokenId: ${selectedVehicle}) {
+                  tokenId
+                  definition { make model year }
+                }
+              }`,
+              variables: {}
+            });
+            const def = identityResult?.data?.vehicle?.definition;
+            if (def?.make || def?.model || def?.year) {
+              nameLabel = `${def?.make || ''} ${def?.model || ''}`.trim() || nameLabel;
+              if (def?.year) nameLabel = `${nameLabel} (${def.year})`;
+            }
+          } catch {}
+        }
+        setVehicleLabel(nameLabel);
         
         // Add welcome message
         const welcomeMessage: Message = {
           id: 'welcome',
           type: 'ai',
-          content: `Welcome to your Mercedes-Benz C-Class AI Assistant! 
+          content: `Welcome to your AI Vehicle Assistant!
 
 I can help you with:
 • Vehicle health analysis and maintenance
@@ -532,14 +817,14 @@ I can help you with:
 ${openaiStatus ? 'Advanced AI Analysis Available' : 'Using Basic Analysis (OpenAI not configured)'}
 ${mcpHealth ? 'Real DIMO Data Connected' : 'Using Mock Data (MCP server not connected)'}
 
-What would you like to know about your Mercedes today?`,
+${selectedVehicle ? `Active vehicle token: ${selectedVehicle}` : 'No vehicle selected. Connect or select a vehicle to begin.'}`,
           timestamp: new Date(),
           metadata: {
             followUpQuestions: [
               "How is my vehicle's health today?",
               "Should I take my car on a long trip?",
-              "What maintenance does my Mercedes need?",
-              "How's my fuel efficiency compared to other C-Class models?"
+              "What maintenance does my vehicle need?",
+              "How's my fuel efficiency compared to similar vehicles?"
             ]
           }
         };
@@ -560,7 +845,7 @@ What would you like to know about your Mercedes today?`,
         const welcomeMessage: Message = {
           id: 'welcome',
           type: 'ai',
-          content: `Welcome to your Mercedes-Benz C-Class AI Assistant! 
+          content: `Welcome to your AI Vehicle Assistant!
 
 I can help you with:
 • Vehicle health analysis and maintenance
@@ -570,14 +855,14 @@ I can help you with:
 
 Using Basic Analysis (Services not configured)
 
-What would you like to know about your Mercedes today?`,
+Connect or select a vehicle to begin.`,
           timestamp: new Date(),
           metadata: {
             followUpQuestions: [
               "How is my vehicle's health today?",
               "Should I take my car on a long trip?",
-              "What maintenance does my Mercedes need?",
-              "How's my fuel efficiency compared to other C-Class models?"
+              "What maintenance does my vehicle need?",
+              "How's my fuel efficiency compared to similar vehicles?"
             ]
           }
         };
@@ -587,7 +872,20 @@ What would you like to know about your Mercedes today?`,
     };
 
     loadInitialData();
-  }, [mcpHealth, openaiStatus]);
+  }, [mcpHealth, openaiStatus, selectedVehicle]);
+
+  // Build selector list even if auth didn't populate availableVehicles
+  const getSelectorVehicles = (): Array<{ tokenId: number; name: string }> => {
+    if (availableVehicles.length > 0) return availableVehicles;
+    if (selectedVehicle !== null && selectedVehicle !== undefined) {
+      return [
+        { tokenId: 0, name: 'All Vehicles' },
+        { tokenId: selectedVehicle, name: vehicleLabel || `Vehicle ${selectedVehicle}` },
+      ];
+    }
+    return [];
+  };
+  const selectorVehicles = getSelectorVehicles();
 
   const addMessage = (content: string, type: 'user' | 'ai', metadata?: any) => {
     const newMessage: Message = {
@@ -601,7 +899,17 @@ What would you like to know about your Mercedes today?`,
   };
 
   const handleSendMessage = async () => {
+    console.log(' === HANDLE SEND MESSAGE ===');
+    console.log('Input:', input);
+    console.log('Is Loading:', isLoading);
+    console.log('Selected Vehicle:', selectedVehicle);
+    
     if (!input.trim() || isLoading) return;
+    if (selectedVehicle === null || selectedVehicle === undefined) {
+      console.log('No vehicle selected');
+      addMessage('No vehicle selected. Please connect a vehicle via DIMO or choose one from your dashboard.', 'ai');
+      return;
+    }
 
     const userMessage = input.trim();
     setInput('');
@@ -611,10 +919,15 @@ What would you like to know about your Mercedes today?`,
     addMessage(userMessage, 'user');
 
     try {
-      // Starting real AI analysis
+      // Starting AI analysis
+      console.log('Starting AI analysis...');
+      const fleetTokenIds = selectorVehicles.filter(v => v.tokenId > 0).map(v => v.tokenId);
+      console.log('Fleet Token IDs:', fleetTokenIds);
+      console.log('Analysis type:', selectedVehicle === 0 ? 'FLEET' : 'SINGLE VEHICLE');
       
-      // Use real AI analysis with OpenAI + MCP
-      const aiResult = await performRealAIAnalysis(userMessage, selectedVehicle);
+      const aiResult = selectedVehicle === 0
+        ? await performFleetAIAnalysis(userMessage, fleetTokenIds)
+        : await performRealAIAnalysis(userMessage, selectedVehicle);
       
       let formattedResponse = '';
       let metadata: any = {};
@@ -692,7 +1005,8 @@ ${historicalData.recommendations?.map((rec: string) => `• ${rec}`).join('\n') 
         case 'general':
           formattedResponse = aiResult.data.response;
           metadata = {
-            vehicleData: aiResult.data.vehicleData
+            vehicleData: aiResult.data.vehicleData,
+            vehicles: aiResult.data.vehicles
           };
           break;
 
@@ -713,8 +1027,10 @@ ${historicalData.recommendations?.map((rec: string) => `• ${rec}`).join('\n') 
 
     } catch (error) {
       console.error('AI response error:', error);
+      console.error('Error details:', error);
       addMessage('Sorry, I encountered an error while analyzing your vehicle. Please try again or check if the services are properly configured.', 'ai');
     } finally {
+      console.log(' Chat request completed');
       setIsLoading(false);
     }
   };
@@ -763,7 +1079,7 @@ ${historicalData.recommendations?.map((rec: string) => `• ${rec}`).join('\n') 
                 <Bot className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <CardTitle className="text-xl">Mercedes-Benz C-Class AI Assistant</CardTitle>
+                <CardTitle className="text-xl">AI Vehicle Assistant</CardTitle>
                 <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                   <div className="flex items-center space-x-1">
                     <div className={`w-2 h-2 rounded-full ${mcpHealth ? 'bg-green-500' : 'bg-red-500'}`}></div>
@@ -776,13 +1092,27 @@ ${historicalData.recommendations?.map((rec: string) => `• ${rec}`).join('\n') 
                 </div>
               </div>
             </div>
-            
-            {mercedesVehicle && (
-              <div className="text-right">
-                <div className="text-sm font-medium text-foreground">{mercedesVehicle.name}</div>
-                <div className="text-xs text-muted-foreground">Vehicle ID: {mercedesVehicle.tokenId}</div>
-              </div>
-            )}
+            <div className="text-right flex flex-col items-end gap-1">
+              <div className="text-xl font-semibold text-foreground">SELECT CAR</div>
+              {selectorVehicles.length > 0 && (
+                <select
+                  value={selectedVehicle ?? ''}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    console.log('Header vehicle selection changed:', val);
+                    if (!Number.isNaN(val)) {
+                      setSelectedVehicle(val);
+                      try { localStorage.setItem('activeVehicleTokenId', String(val)); } catch {}
+                    }
+                  }}
+                  className="text-xs bg-primary/10 border border-primary/40 text-primary font-medium rounded px-3 py-1 shadow-sm hover:bg-primary/15 focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {selectorVehicles.map(v => (
+                    <option key={v.tokenId} value={v.tokenId}>{v.name} · {v.tokenId}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -858,25 +1188,48 @@ ${historicalData.recommendations?.map((rec: string) => `• ${rec}`).join('\n') 
       {/* Input Area */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex space-x-3 mb-3">
-            <div className="flex-1">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me about your Mercedes-Benz C-Class..."
-                className="w-full p-3 border border-border rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
-                rows={2}
-                disabled={isLoading}
-              />
+          <div className="flex flex-col gap-2 mb-3">
+            {selectorVehicles.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">Vehicle:</span>
+                <select
+                  value={selectedVehicle ?? ''}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    console.log('Input area vehicle selection changed:', val);
+                    if (!Number.isNaN(val)) {
+                      setSelectedVehicle(val);
+                      try { localStorage.setItem('activeVehicleTokenId', String(val)); } catch {}
+                    }
+                  }}
+                  className="text-sm bg-background border border-border rounded px-2 py-1"
+                >
+                  {selectorVehicles.map(v => (
+                    <option key={v.tokenId} value={v.tokenId}>{v.name} · {v.tokenId}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="flex space-x-3">
+              <div className="flex-1">
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Ask about your vehicle..."
+                  className="w-full p-3 border border-border rounded-lg resize-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-foreground"
+                  rows={2}
+                  disabled={isLoading}
+                />
+              </div>
+              <Button
+                onClick={handleSendMessage}
+                disabled={!input.trim() || isLoading}
+                className="px-6 py-3"
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
             </div>
-            <Button
-              onClick={handleSendMessage}
-              disabled={!input.trim() || isLoading}
-              className="px-6 py-3"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
           </div>
           
           {/* Quick Actions */}
@@ -902,7 +1255,7 @@ ${historicalData.recommendations?.map((rec: string) => `• ${rec}`).join('\n') 
               Trip Readiness
             </Button>
             <Button
-              onClick={() => handleQuickQuestion("What maintenance does my Mercedes need?")}
+              onClick={() => handleQuickQuestion("What maintenance does my vehicle need?")}
               disabled={isLoading}
               variant="outline"
               size="sm"
