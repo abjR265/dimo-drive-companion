@@ -8,7 +8,6 @@ export const trpc = createTRPCReact<AppRouter>();
 
 // Vanilla client for server-side usage
 export const trpcClient = createTRPCProxyClient<AppRouter>({
-  transformer: superjson,
   links: [
     loggerLink({
       enabled: (opts) =>
@@ -28,7 +27,6 @@ export const trpcClient = createTRPCProxyClient<AppRouter>({
 
 // tRPC client configuration for React Query
 export const trpcClientConfig = {
-  transformer: superjson,
   links: [
     loggerLink({
       enabled: (opts) =>
