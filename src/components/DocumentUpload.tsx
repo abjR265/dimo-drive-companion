@@ -328,7 +328,7 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
       try {
         createdDbDoc = await db.createDocument({
           vehicleId: targetVehicleId,
-          tokenId: tokenId || vehicleMatch?.tokenId || getPrimaryTokenIdFromAuth() || 999999, // avoid magic constants
+          tokenId: tokenId || vehicleMatch?.tokenId || getPrimaryTokenIdFromAuth() || 999999,
           type: document.type,
           filename: document.filename,
           originalName: document.originalName,
