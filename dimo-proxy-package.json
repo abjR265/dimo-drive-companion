@@ -1,0 +1,19 @@
+{
+  "name": "dimo-proxy",
+  "version": "1.0.0",
+  "description": "DIMO attestation proxy server",
+  "main": "dimo-proxy.js",
+  "type": "module",
+  "scripts": {
+    "start": "node dimo-proxy.js",
+    "dev": "node dimo-proxy.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

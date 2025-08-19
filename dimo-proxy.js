@@ -3,7 +3,7 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 
 const app = express();
-const PORT = 3003;
+const PORT = process.env.PORT || 3003;
 
 // Enable CORS for all routes
 app.use(cors());
@@ -59,7 +59,8 @@ app.get('/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`DIMO proxy server running on http://localhost:${PORT}`);
+  console.log(`DIMO proxy server running on port ${PORT}`);
+  console.log(`Health check available at: http://localhost:${PORT}/health`);
   console.log('Available endpoints:');
   console.log('  POST /api/dimo-attestation - Proxy DIMO attestation requests');
   console.log('  GET  /health - Health check');
