@@ -2,6 +2,11 @@
 
 A sophisticated web application that transforms DIMO-connected vehicles into intelligent automotive companions with AI-powered insights, predictive maintenance, and autonomous capabilities.
 
+## Live Demo
+
+- **Production**: [https://dimo-drive-ai.vercel.app/](https://dimo-drive-ai.vercel.app/)
+- **Railway Hosting**: [https://railway.com/project/a599968c-febc-4efd-a375-018b10601280](https://railway.com/project/a599968c-febc-4efd-a375-018b10601280?environmentId=5cd72ba1-dad4-43f9-be1e-faab74db60d1)
+
 ## Tech Stack
 
 ![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react&logoColor=black&style=for-the-badge)
@@ -13,7 +18,8 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 ![Supabase](https://img.shields.io/badge/Supabase-2.53+-3ECF8E?logo=supabase&logoColor=white&style=for-the-badge)
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT_4+-412991?logo=openai&logoColor=white&style=for-the-badge)
 ![DIMO](https://img.shields.io/badge/DIMO_Network-1.3+-000000?logo=dimo&logoColor=white&style=for-the-badge)
-
+![Railway](https://img.shields.io/badge/Railway-Hosted-0B0D0E?logo=railway&logoColor=white&style=for-the-badge)
+![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white&style=for-the-badge)
 
 ### Frontend Technologies
 - [React 18](https://react.dev/) - UI framework
@@ -31,7 +37,7 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 - [Lucide React](https://lucide.dev/) - Icon library
 
 ### Backend & AI Integration
-- [OpenAI API](https://platform.openai.com/) - AI language models
+- [OpenAI API](https://platform.openai.com/) - AI language models (GPT-4o)
 - [DIMO Network](https://dimo.zone/) - Vehicle data platform
 - [Model Context Protocol](https://modelcontextprotocol.io/) - AI assistant integration
 - [Bun](https://bun.sh/) - JavaScript runtime for MCP server
@@ -43,6 +49,11 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 - [DIMO Identity API](https://identity-api.dimo.zone/) - Vehicle identity data
 - [DIMO Telemetry API](https://telemetry-api.dimo.zone/) - Vehicle telemetry data
 - [OCR.space](https://ocr.space/) - Document text extraction
+
+### Deployment & Hosting
+- [Vercel](https://vercel.com/) - Frontend hosting and deployment
+- [Railway](https://railway.app/) - Backend services and MCP server hosting
+- [Docker](https://docker.com/) - Containerization
 
 ### Development Tools
 - [ESLint](https://eslint.org/) - Code linting
@@ -56,31 +67,31 @@ DIMO AI is a comprehensive vehicle management platform that leverages artificial
 ## Key Features
 
 ### AI-Powered Vehicle Intelligence
-- Real-time Health Monitoring: Continuous analysis of vehicle systems with intelligent diagnostics
-- Predictive Maintenance: AI-powered predictions to prevent breakdowns before they happen
-- Smart Trip Planning: Journey optimization with real-time traffic and charging data
-- Natural Language Chat: Conversational AI assistant for vehicle queries and assistance
-- Document Intelligence: Upload receipts and get automatic maintenance reminders
-- Multi-Vehicle Optimization: Manage and optimize multiple vehicles simultaneously
+- **Real-time Health Monitoring**: Continuous analysis of vehicle systems with intelligent diagnostics
+- **Predictive Maintenance**: AI-powered predictions to prevent breakdowns before they happen
+- **Smart Trip Planning**: Journey optimization with real-time traffic and charging data
+- **Natural Language Chat**: Conversational AI assistant for vehicle queries and assistance
+- **Document Intelligence**: Upload receipts and get automatic maintenance reminders
+- **Multi-Vehicle Optimization**: Manage and optimize multiple vehicles simultaneously
 
 ### Vehicle Management
-- Multi-Vehicle Support: Manage multiple DIMO-connected vehicles from a single dashboard
-- Real-time Telemetry: Live vehicle data including fuel/battery levels, tire pressure, and diagnostics
-- Service Tracking: Automated maintenance scheduling and cost estimation
-- Emergency Response: Intelligent emergency assistance and roadside support
-- Seasonal Adaptation: Weather-aware vehicle recommendations and adjustments
+- **Multi-Vehicle Support**: Manage multiple DIMO-connected vehicles from a single dashboard
+- **Real-time Telemetry**: Live vehicle data including fuel/battery levels, tire pressure, and diagnostics
+- **Service Tracking**: Automated maintenance scheduling and cost estimation
+- **Emergency Response**: Intelligent emergency assistance and roadside support
+- **Seasonal Adaptation**: Weather-aware vehicle recommendations and adjustments
 
 ### Security & Privacy
-- Blockchain-based Data: Secure, decentralized vehicle data storage
-- DIMO Authentication: Seamless integration with DIMO Network authentication
-- Privacy-First: User-controlled data sharing and permissions
-- Verifiable Credentials: Proof of Movement and VIN credential creation
+- **Blockchain-based Data**: Secure, decentralized vehicle data storage
+- **DIMO Authentication**: Seamless integration with DIMO Network authentication
+- **Privacy-First**: User-controlled data sharing and permissions
+- **Verifiable Credentials**: Proof of Movement and VIN credential creation
 
 ### Modern User Experience
-- Responsive Design: Beautiful, modern UI that works on all devices
-- Real-time Updates: Live data streaming and instant notifications
-- Intuitive Navigation: Clean, organized interface with smart categorization
-- Dark Mode Support: Automatic theme switching with system preferences
+- **Responsive Design**: Beautiful, modern UI that works on all devices
+- **Real-time Updates**: Live data streaming and instant notifications
+- **Intuitive Navigation**: Clean, organized interface with smart categorization
+- **Dark Mode Support**: Automatic theme switching with system preferences
 
 ## Architecture
 
@@ -94,18 +105,18 @@ DIMO AI is a comprehensive vehicle management platform that leverages artificial
 - TanStack Query for efficient data fetching and caching
 
 ### Backend & AI Integration
-- OpenAI API: Advanced AI language models for intelligent analysis
-- DIMO Telemetry Integration: Real-time vehicle data processing
-- External API Integration: Weather, traffic, and service provider APIs
-- DIMO MCP Server: Model Context Protocol integration for AI assistants
-- tRPC Server: Type-safe backend API with validation
+- **OpenAI API**: Advanced AI language models for intelligent analysis (GPT-4o)
+- **DIMO Telemetry Integration**: Real-time vehicle data processing
+- **External API Integration**: Weather, traffic, and service provider APIs
+- **DIMO MCP Server**: Model Context Protocol integration for AI assistants
+- **tRPC Server**: Type-safe backend API with validation
 
 ### Data & APIs
-- DIMO Network APIs: Identity and Telemetry GraphQL endpoints
-- Real-time Telemetry: Live vehicle data streaming
-- Blockchain Integration: Secure, decentralized data storage
-- External Services: Weather, traffic, and service provider APIs
-- OCR Services: Document processing with OCR.space API
+- **DIMO Network APIs**: Identity and Telemetry GraphQL endpoints
+- **Real-time Telemetry**: Live vehicle data streaming
+- **Blockchain Integration**: Secure, decentralized data storage
+- **External Services**: Weather, traffic, and service provider APIs
+- **OCR Services**: Document processing with OCR.space API
 
 ## Getting Started
 
@@ -131,6 +142,31 @@ npm install
 Copy the example environment file and configure your credentials:
 ```bash
 cp env.example .env
+```
+
+Required environment variables:
+```env
+# DIMO Integration
+VITE_DIMO_CLIENT_ID=your_client_id
+VITE_DIMO_API_KEY=your_api_key
+VITE_DIMO_DOMAIN=your_domain
+VITE_DIMO_DEVELOPER_JWT=your_developer_jwt
+
+# OpenAI Integration
+VITE_OPENAI_API_KEY=your_openai_api_key
+VITE_OPENAI_ENDPOINT=https://api.openai.com/v1
+VITE_OPENAI_ORG_ID=your_org_id  # Optional
+
+# Supabase
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# OCR Services
+VITE_OCR_API_KEY=your_ocr_api_key
+
+# MCP Server (Optional)
+VITE_DIMO_MCP_SERVER_URL=http://localhost:3001
+VITE_MCP_SERVER_URL=http://localhost:3001
 ```
 
 4. **Start the development server**
@@ -213,8 +249,6 @@ dimo-ai-web/
 3. Configure environment variables for authentication
 4. Set up vehicle permissions and privileges
 
-
-
 ### MCP Server (Optional)
 1. Navigate to `mcp-dimo/` directory
 2. Install dependencies: `bun install`
@@ -230,48 +264,48 @@ dimo-ai-web/
 ## Core Features
 
 ### Vehicle Dashboard
-- Real-time Health Monitoring: Live vehicle status and health scores
-- AI-Powered Insights: Intelligent analysis and recommendations
-- Multi-Vehicle Management: Support for multiple connected vehicles
-- Service Tracking: Automated maintenance scheduling
-- Document Intelligence: Upload and analyze maintenance records
+- **Real-time Health Monitoring**: Live vehicle status and health scores
+- **AI-Powered Insights**: Intelligent analysis and recommendations
+- **Multi-Vehicle Management**: Support for multiple connected vehicles
+- **Service Tracking**: Automated maintenance scheduling
+- **Document Intelligence**: Upload and analyze maintenance records
 
 ### AI Chat Assistant (Enhanced)
-- Natural Language Interface: Conversational vehicle queries
-- Context-Aware Responses: Vehicle-specific recommendations
-- Multi-turn Conversations: Maintains context across interactions
-- Quick Actions: Pre-built queries for common tasks
-- Real-time Data Integration: Live telemetry and historical data
-- Advanced AI Analysis: OpenAI GPT-4 powered insights
+- **Natural Language Interface**: Conversational vehicle queries
+- **Context-Aware Responses**: Vehicle-specific recommendations
+- **Multi-turn Conversations**: Maintains context across interactions
+- **Quick Actions**: Pre-built queries for common tasks
+- **Real-time Data Integration**: Live telemetry and historical data
+- **Advanced AI Analysis**: OpenAI GPT-4o powered insights
 
 ### AI Vehicle Analysis
-- Health Analysis: Comprehensive system diagnostics
-- Maintenance Checks: Service interval and wear item analysis
-- Trip Readiness: Pre-trip safety and preparation assessment
-- Nearby Services: Location-based service recommendations
-- Cost Optimization: Maintenance cost analysis and budgeting
-- Emergency Response: Intelligent emergency assistance
+- **Health Analysis**: Comprehensive system diagnostics
+- **Maintenance Checks**: Service interval and wear item analysis
+- **Trip Readiness**: Pre-trip safety and preparation assessment
+- **Nearby Services**: Location-based service recommendations
+- **Cost Optimization**: Maintenance cost analysis and budgeting
+- **Emergency Response**: Intelligent emergency assistance
 
 ### Document Intelligence
-- OCR Processing: Extract text from receipts and documents
-- Maintenance Tracking: Automatic service schedule extraction
-- Cost Analysis: Expense tracking and cost estimation
-- Receipt Processing: Oil change and service receipt analysis
-- Registration Documents: Vehicle information extraction
-- AI Insights: Intelligent document analysis and recommendations
+- **OCR Processing**: Extract text from receipts and documents
+- **Maintenance Tracking**: Automatic service schedule extraction
+- **Cost Analysis**: Expense tracking and cost estimation
+- **Receipt Processing**: Oil change and service receipt analysis
+- **Registration Documents**: Vehicle information extraction
+- **AI Insights**: Intelligent document analysis and recommendations
 
 ### MCP Integration
-- DIMO API Access: Direct GraphQL query capabilities
-- VIN Operations: Vehicle identification and decoding
-- Telemetry Queries: Real-time and historical data access
-- Verifiable Credentials: Proof of Movement and VIN credentials
-- Schema Introspection: API discovery and documentation
+- **DIMO API Access**: Direct GraphQL query capabilities
+- **VIN Operations**: Vehicle identification and decoding
+- **Telemetry Queries**: Real-time and historical data access
+- **Verifiable Credentials**: Proof of Movement and VIN credentials
+- **Schema Introspection**: API discovery and documentation
 
 ### DIMO Attestation
-- Document Attestation: Create verifiable credentials for vehicle documents
-- Privacy Controls: User-controlled data sharing and permissions
-- Blockchain Integration: Secure, decentralized document storage
-- VIN Credentials: Vehicle identification verification
+- **Document Attestation**: Create verifiable credentials for vehicle documents
+- **Privacy Controls**: User-controlled data sharing and permissions
+- **Blockchain Integration**: Secure, decentralized document storage
+- **VIN Credentials**: Vehicle identification verification
 
 ## API Endpoints
 
@@ -301,21 +335,21 @@ dimo-ai-web/
 ## UI Components
 
 ### Design System
-- Custom Tailwind Theme: Automotive-focused color palette
-- Responsive Layout: Mobile-first design approach
-- Accessibility: WCAG 2.1 AA compliant components
-- Dark Mode: Automatic theme switching
-- shadcn/ui: Modern, accessible component library
+- **Custom Tailwind Theme**: Automotive-focused color palette
+- **Responsive Layout**: Mobile-first design approach
+- **Accessibility**: WCAG 2.1 AA compliant components
+- **Dark Mode**: Automatic theme switching
+- **shadcn/ui**: Modern, accessible component library
 
 ### Key Components
-- VehicleCard: Interactive vehicle display with AI actions
-- AIChatEnhanced: Advanced conversational interface with real-time data
-- DocumentIntelligence: Document processing and analysis
-- DocumentUpload: File upload with drag-and-drop support
-- Dashboard: Multi-vehicle overview with real-time data
-- AppLayout: Responsive sidebar navigation
-- McpTest: MCP server testing interface
-- DimoAttestationTest: DIMO attestation testing interface
+- **VehicleCard**: Interactive vehicle display with AI actions
+- **AIChatEnhanced**: Advanced conversational interface with real-time data
+- **DocumentIntelligence**: Document processing and analysis
+- **DocumentUpload**: File upload with drag-and-drop support
+- **Dashboard**: Multi-vehicle overview with real-time data
+- **AppLayout**: Responsive sidebar navigation
+- **McpTest**: MCP server testing interface
+- **DimoAttestationTest**: DIMO attestation testing interface
 
 ## Deployment
 
@@ -328,11 +362,19 @@ npm run preview      # Preview production build
 npm run lint         # Run ESLint
 ```
 
-### Production
-1. Build the application: `npm run build`
-2. Deploy the `dist/` folder to your hosting provider
-3. Configure environment variables for production
-4. Set up SSL certificates for secure connections
+### Production Deployment
+
+#### Vercel (Frontend)
+1. Connect your GitHub repository to Vercel
+2. Configure environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+4. Access at: [https://dimo-drive-ai.vercel.app/](https://dimo-drive-ai.vercel.app/)
+
+#### Railway (Backend Services)
+1. Connect your GitHub repository to Railway
+2. Configure environment variables in Railway dashboard
+3. Deploy MCP server and backend services
+4. Monitor at: [Railway Dashboard](https://railway.com/project/a599968c-febc-4efd-a375-018b10601280)
 
 ### Docker Deployment
 ```bash
@@ -366,11 +408,11 @@ npm run test:watch   # Watch mode for development
 ## Performance
 
 ### Optimization Features
-- Code Splitting: Lazy-loaded components and routes
-- Image Optimization: WebP format with fallbacks
-- Caching: Intelligent data caching and state management
-- Bundle Analysis: Optimized bundle sizes
-- Vite Build: Fast development and optimized production builds
+- **Code Splitting**: Lazy-loaded components and routes
+- **Image Optimization**: WebP format with fallbacks
+- **Caching**: Intelligent data caching and state management
+- **Bundle Analysis**: Optimized bundle sizes
+- **Vite Build**: Fast development and optimized production builds
 
 ### Monitoring
 - Real-time performance metrics
@@ -381,16 +423,16 @@ npm run test:watch   # Watch mode for development
 ## Security
 
 ### Authentication
-- DIMO OAuth: Secure blockchain-based authentication
-- JWT Management: Automatic token refresh and validation
-- Permission System: Granular access control
-- Session Management: Secure session handling
+- **DIMO OAuth**: Secure blockchain-based authentication
+- **JWT Management**: Automatic token refresh and validation
+- **Permission System**: Granular access control
+- **Session Management**: Secure session handling
 
 ### Data Protection
-- Encrypted Storage: Sensitive data encryption
-- API Security: Rate limiting and request validation
-- Privacy Controls: User-controlled data sharing
-- Audit Logging: Comprehensive activity tracking
+- **Encrypted Storage**: Sensitive data encryption
+- **API Security**: Rate limiting and request validation
+- **Privacy Controls**: User-controlled data sharing
+- **Audit Logging**: Comprehensive activity tracking
 
 ## Contributing
 
@@ -456,32 +498,11 @@ npm run test:watch   # Watch mode for development
 - Check Node.js version compatibility
 - Verify environment variables are set
 
-## Roadmap
+**Production Deployment Issues**
+- Check environment variables in Vercel/Railway dashboards
+- Verify API endpoints are accessible
+- Check CORS configuration for cross-origin requests
 
-### Phase 1 (Current)
-- Core vehicle dashboard
-- AI chat interface with OpenAI integration
-- Basic vehicle management
-- DIMO authentication
-- MCP server integration
-- Document intelligence
-- Real-time telemetry
-- Advanced AI analysis
-
-### Phase 2 (Planned)
-- Emergency response features
-- Seasonal adaptation
-- Cost optimization
-- Multi-vehicle optimization
-- Advanced predictive analytics
-- Fleet management features
-
-### Phase 3 (Future)
-- Mobile app integration
-- Third-party integrations
-- Advanced security features
-- Machine learning models
-- IoT device integration
 
 ## License
 
@@ -494,6 +515,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - React Team for the amazing frontend framework
 - Tailwind CSS for the utility-first CSS framework
 - shadcn/ui for the beautiful component library
+- Vercel for seamless frontend deployment
+- Railway for reliable backend hosting
 
 ## Support
 
