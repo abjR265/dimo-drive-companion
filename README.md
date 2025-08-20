@@ -21,44 +21,19 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 ![Railway](https://img.shields.io/badge/Railway-Hosted-0B0D0E?logo=railway&logoColor=white&style=for-the-badge)
 ![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?logo=vercel&logoColor=white&style=for-the-badge)
 
-### Frontend Technologies
-- [React 18](https://react.dev/) - UI framework
-- [TypeScript](https://www.typescriptlang.org/) - Type-safe development
-- [Vite](https://vitejs.dev/) - Build tool and dev server
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
-- [Radix UI](https://www.radix-ui.com/) - Accessible UI components
-- [shadcn/ui](https://ui.shadcn.com/) - Component library
-- [React Router](https://reactrouter.com/) - Client-side routing
-- [tRPC](https://trpc.io/) - Type-safe API communication
-- [TanStack Query](https://tanstack.com/query) - Data fetching and caching
-- [Zod](https://zod.dev/) - Schema validation
-- [Framer Motion](https://www.framer.com/motion/) - Animation library
-- [Recharts](https://recharts.org/) - Chart components
-- [Lucide React](https://lucide.dev/) - Icon library
-
-### Backend & AI Integration
-- [OpenAI API](https://platform.openai.com/) - AI language models (GPT-4o)
-- [DIMO Network](https://dimo.zone/) - Vehicle data platform
-- [Model Context Protocol](https://modelcontextprotocol.io/) - AI assistant integration
-- [Bun](https://bun.sh/) - JavaScript runtime for MCP server
-- [Express.js](https://expressjs.com/) - Web framework for MCP server
-- [GraphQL](https://graphql.org/) - API query language
-
-### Data & Storage
-- [Supabase](https://supabase.com/) - Database and authentication
-- [DIMO Identity API](https://identity-api.dimo.zone/) - Vehicle identity data
-- [DIMO Telemetry API](https://telemetry-api.dimo.zone/) - Vehicle telemetry data
-- [OCR.space](https://ocr.space/) - Document text extraction
-
-### Deployment & Hosting
-- [Vercel](https://vercel.com/) - Frontend hosting and deployment
-- [Railway](https://railway.app/) - Backend services and MCP server hosting
-- [Docker](https://docker.com/) - Containerization
-
-### Development Tools
-- [ESLint](https://eslint.org/) - Code linting
-- [PostCSS](https://postcss.org/) - CSS processing
-- [Autoprefixer](https://autoprefixer.github.io/) - CSS vendor prefixes
+| Category | Technology | Description |
+|----------|------------|-------------|
+| **Frontend** | React 18, TypeScript, Vite | UI framework, type-safe development, build tool |
+| | Tailwind CSS, Radix UI, shadcn/ui | CSS framework, accessible components, component library |
+| | React Router, tRPC, TanStack Query | Client-side routing, type-safe API, data fetching |
+| | Zod, Framer Motion, Recharts, Lucide React | Schema validation, animations, charts, icons |
+| **Backend & AI** | OpenAI API (GPT-4o), DIMO Network | AI language models, vehicle data platform |
+| | Model Context Protocol, Bun, Express.js | AI assistant integration, runtime, web framework |
+| | GraphQL | API query language |
+| **Data & Storage** | Supabase, DIMO APIs | Database, authentication, vehicle data |
+| | OCR.space | Document text extraction |
+| **Deployment** | Vercel, Railway, Docker | Frontend hosting, backend services, containerization |
+| **Development** | ESLint, PostCSS, Autoprefixer | Code linting, CSS processing, vendor prefixes |
 
 ## Overview
 
