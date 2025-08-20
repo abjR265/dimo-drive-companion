@@ -52,10 +52,12 @@ interface DocumentAnalysis {
 export class DocumentProcessor {
   private openaiApiKey: string;
   private openaiOrgId: string;
+  private openaiEndpoint: string;
 
   constructor() {
     this.openaiApiKey = import.meta.env.VITE_OPENAI_API_KEY;
     this.openaiOrgId = import.meta.env.VITE_OPENAI_ORG_ID;
+    this.openaiEndpoint = import.meta.env.VITE_OPENAI_ENDPOINT || 'https://api.openai.com/v1';
   }
 
   async processDocument(file: File): Promise<DocumentAnalysis> {
@@ -179,12 +181,17 @@ IMPORTANT RULES:
 11. Populate alertDates section with all relevant dates for proactive notifications
 `;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
+      'Content-Type': 'application/json'
+    };
+    if (this.openaiOrgId) {
+      headers['OpenAI-Organization'] = this.openaiOrgId;
+    }
+
+    const response = await fetch(`${this.openaiEndpoint}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers,
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
@@ -393,13 +400,17 @@ IMPORTANT RULES:
 11. Populate alertDates section with all relevant dates for proactive notifications
 `;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.openaiApiKey}`,
+    };
+    if (this.openaiOrgId) {
+      headers['OpenAI-Organization'] = this.openaiOrgId;
+    }
+
+    const response = await fetch(`${this.openaiEndpoint}/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiApiKey}`,
-        'OpenAI-Organization': this.openaiOrgId
-      },
+      headers,
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [

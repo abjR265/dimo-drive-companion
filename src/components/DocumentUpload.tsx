@@ -124,6 +124,10 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
 
+  const DEMO_VEHICLE_UUID = '550e8400-e29b-41d4-a716-446655440000';
+  const isValidUuid = (value: any): value is string =>
+    typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
   // Helper: resolve user's primary tokenId from stored auth
   const getPrimaryTokenIdFromAuth = (): number | null => {
     try {
@@ -311,8 +315,10 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         vehicleMatch
       };
 
-      // Get the target vehicle ID from the vehicle match
-      const targetVehicleId = vehicleMatch?.vehicleId || vehicleId;
+      // Determine a safe vehicle ID (must be a UUID to satisfy DB uuid type)
+      const targetVehicleId = isValidUuid(vehicleMatch?.vehicleId)
+        ? vehicleMatch!.vehicleId
+        : (isValidUuid(vehicleId) ? vehicleId! : DEMO_VEHICLE_UUID);
       
       // Upload file to Supabase Storage
       const storagePath = `${targetVehicleId}/${id}-${file.name}`;
@@ -364,7 +370,9 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
           await new Promise(resolve => setTimeout(resolve, 1000));
           
           // Get the actual vehicle ID from the database
-          const targetVehicleId = document.vehicleMatch?.vehicleId || vehicleId;
+          const targetVehicleId = isValidUuid(document.vehicleMatch?.vehicleId)
+            ? document.vehicleMatch!.vehicleId
+            : (isValidUuid(vehicleId) ? vehicleId! : DEMO_VEHICLE_UUID);
           const documentIdForAlerts = createdDbDoc?.id || document.id;
 
           // Create alerts using the database document ID to satisfy FK constraint

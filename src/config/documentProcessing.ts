@@ -65,11 +65,12 @@ export function getDocumentProcessor() {
 export function isProcessingMethodAvailable(method: string): boolean {
   switch (method) {
     case 'openai':
-      return !!(import.meta.env.VITE_OPENAI_API_KEY && import.meta.env.VITE_OPENAI_ORG_ID);
+      // Only API key is required; organization header is optional
+      return !!import.meta.env.VITE_OPENAI_API_KEY;
     case 'mcp':
-      return !!(import.meta.env.VITE_DIMO_MCP_SERVER_URL);
+      return !!(import.meta.env.VITE_DIMO_MCP_SERVER_URL || import.meta.env.VITE_MCP_SERVER_URL);
     case 'ocr':
-      return !!(import.meta.env.VITE_DIMO_MCP_SERVER_URL);
+      return !!(import.meta.env.VITE_DIMO_MCP_SERVER_URL || import.meta.env.VITE_MCP_SERVER_URL);
     case 'fallback':
       return true;
     default:
