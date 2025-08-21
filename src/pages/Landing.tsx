@@ -188,7 +188,11 @@ export default function Landing() {
                     </div>
                   </div>
                 )}
-                <Button variant="outline" size="xl">
+                <Button 
+                  variant="outline" 
+                  size="xl"
+                  onClick={() => window.open('https://www.loom.com/share/da6c1d7fcb314bc2a56788f870cd3791?sid=e95e94e2-f354-4f0b-a74c-9ffd2fe21d94', '_blank')}
+                >
                   Watch Demo
                 </Button>
               </div>
