@@ -144,6 +144,26 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
     }
   };
 
+  // Helper function to ensure user exists in database
+  const ensureUserExists = async (walletAddress: string, tokenId: number = 999999) => {
+    try {
+      const existingUser = await db.getUserByWallet(walletAddress);
+      if (!existingUser) {
+        console.log('Creating missing user in database...');
+        const newUser = await db.createUser({
+          walletAddress: walletAddress,
+          dimoTokenId: tokenId
+        });
+        console.log('✓ User created successfully:', newUser.id);
+        return newUser;
+      }
+      return existingUser;
+    } catch (error) {
+      console.error('Error ensuring user exists:', error);
+      throw error;
+    }
+  };
+
   // Initialize document processor
   useEffect(() => {
     const initProcessor = async () => {
@@ -182,9 +202,8 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         
         if (!walletAddress) return;
         
-        // Get user from database
-        const user = await db.getUserByWallet(walletAddress);
-        if (!user) return;
+        // Ensure user exists in database (create if missing)
+        const user = await ensureUserExists(walletAddress, userTokenId || 999999);
         
         // Get all vehicles for this user to get their token IDs
         const userVehicles = await db.getVehiclesByUserId(user.id);
@@ -226,6 +245,11 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
         setDocuments(allDocuments);
       } catch (error) {
         console.error('Failed to load existing documents:', error);
+        toast({
+          title: "Error Loading Documents",
+          description: "Failed to load your existing documents. Please try refreshing the page.",
+          variant: "destructive",
+        });
       }
     };
 
@@ -239,6 +263,22 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
       setProcessingStatus('Starting document processing...');
       setProcessingStartTime(Date.now());
       setEstimatedTimeRemaining(null);
+
+      // Validate user exists before processing
+      const storedAuth = localStorage.getItem('dimoAuth');
+      if (!storedAuth) {
+        throw new Error('No authentication data found. Please log in again.');
+      }
+      
+      const parsedAuth = JSON.parse(storedAuth);
+      const walletAddress = parsedAuth.walletAddress;
+      
+      if (!walletAddress) {
+        throw new Error('No wallet address found. Please log in again.');
+      }
+      
+      // Ensure user exists in database (create if missing)
+      const user = await ensureUserExists(walletAddress, parsedAuth.tokenId || 999999);
 
       // Progress tracking function
       const updateProgress = (progress: number, status: string) => {
@@ -438,9 +478,24 @@ export function DocumentUpload({ vehicleId, tokenId, onDocumentProcessed }: Docu
     } catch (error) {
       console.error('Error processing document:', error);
       setProcessingStatus('Error processing document');
+      
+      // Provide more specific error messages
+      let errorMessage = `Failed to process ${file.name}`;
+      if (error instanceof Error) {
+        if (error.message.includes('User not found in database')) {
+          errorMessage = 'User account not found. Please try logging out and logging back in.';
+        } else if (error.message.includes('No authentication data found')) {
+          errorMessage = 'Authentication required. Please log in again.';
+        } else if (error.message.includes('No wallet address found')) {
+          errorMessage = 'Wallet address not found. Please log in again.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Processing Error",
-        description: `Failed to process ${file.name}`,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

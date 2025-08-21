@@ -13,6 +13,7 @@ import {
 import heroImage from "@/assets/hero-automotive.jpg";
 import { useState } from 'react';
 import { LoginWithDimo, ShareVehiclesWithDimo } from '@dimo-network/login-with-dimo';
+import { db } from '@/lib/supabase';
 
 export default function Landing() {
   const features = [
@@ -158,6 +159,28 @@ export default function Landing() {
                             // Get the first vehicle's tokenId (or use a default)
                             const firstVehicle = userVehicles[0];
                             const tokenId = firstVehicle?.tokenId || firstVehicle?.id || 999999; // Use actual token ID or clearly fake one
+
+                            // Create user in database if they don't exist
+                            if (walletAddress) {
+                              try {
+                                console.log('Checking if user exists in database...');
+                                const existingUser = await db.getUserByWallet(walletAddress);
+                                
+                                if (!existingUser) {
+                                  console.log('User not found, creating new user in database...');
+                                  const newUser = await db.createUser({
+                                    walletAddress: walletAddress,
+                                    dimoTokenId: tokenId
+                                  });
+                                  console.log('✓ User created successfully:', newUser.id);
+                                } else {
+                                  console.log('✓ User already exists in database:', existingUser.id);
+                                }
+                              } catch (userError) {
+                                console.error('Error creating/checking user:', userError);
+                                // Continue with the flow even if user creation fails
+                              }
+                            }
 
                                   // User authentication data processed
 

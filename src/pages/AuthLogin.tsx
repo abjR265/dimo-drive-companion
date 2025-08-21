@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Shield, Zap, Users } from "lucide-react";
 import { LoginWithDimo, ShareVehiclesWithDimo } from '@dimo-network/login-with-dimo';
+import { db } from '@/lib/supabase';
 
 export default function AuthLogin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -62,6 +63,29 @@ export default function AuthLogin() {
         return;
       }
 
+      // Create user in database if they don't exist
+      if (walletAddress) {
+        try {
+          console.log('Checking if user exists in database...');
+          const existingUser = await db.getUserByWallet(walletAddress);
+          
+          if (!existingUser) {
+            console.log('User not found, creating new user in database...');
+            // Use a default token ID for initial login
+            const newUser = await db.createUser({
+              walletAddress: walletAddress,
+              dimoTokenId: 999999 // Default token ID, will be updated when vehicles are shared
+            });
+            console.log('✓ User created successfully:', newUser.id);
+          } else {
+            console.log('✓ User already exists in database:', existingUser.id);
+          }
+        } catch (userError) {
+          console.error('Error creating/checking user:', userError);
+          // Continue with the flow even if user creation fails
+        }
+      }
+
       // Store initial auth data (without vehicles yet)
       localStorage.setItem('dimoAuth', JSON.stringify({
         jwt: userJWT,
@@ -100,6 +124,32 @@ export default function AuthLogin() {
         console.log('Extracted wallet address from JWT:', walletAddress);
       } catch (error) {
         console.error('Failed to extract wallet address from JWT:', error);
+      }
+
+      // Create user in database if they don't exist
+      if (walletAddress) {
+        try {
+          console.log('Checking if user exists in database...');
+          const existingUser = await db.getUserByWallet(walletAddress);
+          
+          if (!existingUser) {
+            console.log('User not found, creating new user in database...');
+            // Extract token ID from vehicles or use a default
+            const vehicles = authData.vehicles || authData.sharedVehicles || [];
+            const primaryTokenId = vehicles.length > 0 ? vehicles[0].tokenId : 999999;
+            
+            const newUser = await db.createUser({
+              walletAddress: walletAddress,
+              dimoTokenId: primaryTokenId
+            });
+            console.log('✓ User created successfully:', newUser.id);
+          } else {
+            console.log('✓ User already exists in database:', existingUser.id);
+          }
+        } catch (userError) {
+          console.error('Error creating/checking user:', userError);
+          // Continue with the flow even if user creation fails
+        }
       }
 
       // Fetch vehicles using DIMO Identity API
