@@ -6,6 +6,7 @@ A sophisticated web application that transforms DIMO-connected vehicles into int
 
 - **Production**: [https://dimo-drive-ai.vercel.app/](https://dimo-drive-ai.vercel.app/)
 - **Railway Hosting**: [https://railway.com/project/a599968c-febc-4efd-a375-018b10601280](https://railway.com/project/a599968c-febc-4efd-a375-018b10601280?environmentId=5cd72ba1-dad4-43f9-be1e-faab74db60d1)
+- **Demo Video**: [Watch 3-Minute Demo](https://www.loom.com/share/da6c1d7fcb314bc2a56788f870cd3791?sid=e95e94e2-f354-4f0b-a74c-9ffd2fe21d94)
 
 ## Tech Stack
 
